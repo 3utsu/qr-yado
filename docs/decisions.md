@@ -7,6 +7,7 @@ Workers + Hono（TypeScript）。データは D1、画像は R2（非公開）�
 
 ## D-02 デプロイは Cloudflare の Git 連携（2026-11-02）
 GitHub の main に push すると Workers Builds が自動デプロイする。開発環境（クラウドのコンテナ）からは Cloudflare API に接続できないため、`wrangler deploy` を手元で実行しない構成にする。
+2026-11-02 初回デプロイ成功：https://qr-yado.rutsunom.workers.dev （workers.dev と preview URL を明示的に有効化）
 
 ## D-03 印刷は AirPrint ＋ Webページ（2026-11-02）
 宿主用の印刷ページを iPad のブラウザで開き、AirPrint で手元の Canon／ブラザーのレーザープリンターに出す。
