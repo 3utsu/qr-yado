@@ -1,0 +1,12 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "qr-yado",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "observability": { "enabled": true },
+  "vars": {
+    "APP_ENV": "production"
+  }
+  // D1 / R2 のバインディングは技術検証（11/3）後に追加する。
+  // 秘密情報（ANTHROPIC_API_KEY, INVOICE_API_ID など）は `wrangler secret put` で登録し、ここには書かない。
+}

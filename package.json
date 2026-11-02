@@ -1,0 +1,34 @@
+{
+  "name": "qr-yado",
+  "version": "0.1.0",
+  "description": "スマホを使えない高齢者でも遍路宿を開ける民泊運営システム",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/3utsu/qr-yado.git"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/3utsu/qr-yado/issues"
+  },
+  "homepage": "https://github.com/3utsu/qr-yado#readme",
+  "dependencies": {
+    "hono": "^4.13.16"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261102.1",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.5",
+    "wrangler": "^4.156.1"
+  },
+  "private": true,
+  "type": "module"
+}

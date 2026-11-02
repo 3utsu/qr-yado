@@ -1,0 +1,16 @@
+node_modules/
+.wrangler/
+dist/
+coverage/
+
+# 秘密情報（wrangler secret / ローカル用）
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+
+# 本物の個人情報（パスポート・レシート等）はここにだけ置く
+fixtures/private/
+
+.DS_Store
+*.log
