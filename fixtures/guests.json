@@ -1,0 +1,105 @@
+{
+  "_note": "すべて架空の宿泊者。テストとデモ用で、実在の個人を指さない。旅券番号は TEST で始まるダミーで、本物の形式を模していない。kana_expected は読みの期待値案。",
+  "guests": [
+    {
+      "id": "guest-001",
+      "name": "John Smith",
+      "nationality": "USA",
+      "language": "en",
+      "kana_expected": "ジョン・スミス",
+      "occupation": "Teacher",
+      "address": "1 Example Street, Sample City, USA",
+      "passport_no": "TEST00001"
+    },
+    {
+      "id": "guest-002",
+      "name": "Emma Wilson",
+      "nationality": "AUS",
+      "language": "en",
+      "kana_expected": "エマ・ウィルソン",
+      "occupation": "Nurse",
+      "address": "2 Example Road, Sample Town, Australia",
+      "passport_no": "TEST00002"
+    },
+    {
+      "id": "guest-003",
+      "name": "Jean Dupont",
+      "nationality": "FRA",
+      "language": "fr",
+      "kana_expected": "ジャン・デュポン",
+      "occupation": "Architect",
+      "address": "3 Rue de l'Exemple, Ville-Exemple, France",
+      "passport_no": "TEST00003"
+    },
+    {
+      "id": "guest-004",
+      "name": "Jan de Vries",
+      "nationality": "NLD",
+      "language": "nl",
+      "kana_expected": "ヤン・デ・フリース",
+      "occupation": "Engineer",
+      "address": "4 Voorbeeldstraat, Voorbeeldstad, Netherlands",
+      "passport_no": "TEST00004"
+    },
+    {
+      "id": "guest-005",
+      "name": "Hans Müller",
+      "nationality": "DEU",
+      "language": "de",
+      "kana_expected": "ハンス・ミュラー",
+      "occupation": "Retired",
+      "address": "5 Beispielstrasse, Beispielstadt, Germany",
+      "passport_no": "TEST00005"
+    },
+    {
+      "id": "guest-006",
+      "name": "Søren Nielsen",
+      "nationality": "DNK",
+      "language": "da",
+      "kana_expected": "セーレン・ニールセン",
+      "occupation": "Designer",
+      "address": "6 Eksempelvej, Eksempelby, Denmark",
+      "passport_no": "TEST00006"
+    },
+    {
+      "id": "guest-007",
+      "name": "José García",
+      "nationality": "ESP",
+      "language": "es",
+      "kana_expected": "ホセ・ガルシア",
+      "occupation": "Chef",
+      "address": "7 Calle Ejemplo, Ciudad Ejemplo, Spain",
+      "passport_no": "TEST00007"
+    },
+    {
+      "id": "guest-008",
+      "name": "Joan Puig",
+      "nationality": "ESP",
+      "language": "ca",
+      "kana_expected": "ジョアン・プッチ",
+      "occupation": "Musician",
+      "address": "8 Carrer Exemple, Ciutat Exemple, Spain",
+      "passport_no": "TEST00008"
+    },
+    {
+      "id": "guest-009",
+      "name": "Łukasz Kowalski",
+      "nationality": "POL",
+      "language": "pl",
+      "kana_expected": "ウカシュ・コヴァルスキ",
+      "occupation": "Programmer",
+      "address": "9 Ulica Przykładowa, Miasto Przykładowe, Poland",
+      "passport_no": "TEST00009"
+    },
+    {
+      "id": "guest-010",
+      "name": "Siobhán Murphy",
+      "nationality": "IRL",
+      "language": "en",
+      "kana_expected": "シボーン・マーフィー",
+      "occupation": "Accountant",
+      "address": "10 Example Lane, Sample Town, Ireland",
+      "passport_no": "TEST00010"
+    }
+  ]
+}
