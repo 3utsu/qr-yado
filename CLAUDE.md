@@ -22,7 +22,8 @@ Built with Claude: Japan 2026 ハッカソン（2026/11/2〜11/8）で作る、�
 ## 技術構成
 
 - Cloudflare Workers（TypeScript + Hono）
-- D1（宿泊者名簿・予約・帳簿）、R2（パスポート・レシート画像。非公開バケット）※バインディングは技術検証後に追加
+- D1（`DB`：宿泊者名簿・予約・要員・帳簿。スキーマは `migrations/`）、R2（`BUCKET`：パスポート・顔写真。非公開バケット `qr-yado-private`）
+  - スキーマの変更は `migrations/` に番号つきで追加し、Cloudflare 側には Claude の Cloudflare コネクタ（d1_database_query）で適用する
 - Claude API（パスポート・レシートの読み取り、宿主の話からの多言語案内生成）。モデルIDは環境変数 `CLAUDE_MODEL` で切り替える
 - 印刷：チェックイン完了で印刷待ちに入れ、宿の機器が取りに来て印刷する。宿主の操作なし、1人1泊1枚（D-10、D-11）
 - デプロイ：GitHub の main へ push → Cloudflare の Git 連携（Workers Builds）で自動デプロイ

@@ -2,6 +2,12 @@ import { Hono } from "hono";
 
 export type Bindings = {
   APP_ENV: string;
+  CLAUDE_MODEL: string;
+  DB: D1Database;
+  BUCKET: R2Bucket;
+  ANTHROPIC_API_KEY?: string;
+  INVOICE_API_ID?: string;
+  PRINT_AGENT_TOKEN?: string;
 };
 
 const app = new Hono<{ Bindings: Bindings }>();

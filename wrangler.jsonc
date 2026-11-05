@@ -7,8 +7,14 @@
   "workers_dev": true,
   "preview_urls": true,
   "vars": {
-    "APP_ENV": "production"
-  }
-  // D1 / R2 のバインディングは技術検証（11/3）後に追加する。
-  // 秘密情報（ANTHROPIC_API_KEY, INVOICE_API_ID など）は `wrangler secret put` で登録し、ここには書かない。
+    "APP_ENV": "production",
+    "CLAUDE_MODEL": "claude-sonnet-5-5"
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "qr-yado", "database_id": "955d5c0b-7645-44a9-9d14-13f44492b16e", "migrations_dir": "migrations" }
+  ],
+  "r2_buckets": [
+    { "binding": "BUCKET", "bucket_name": "qr-yado-private" }
+  ]
+  // 秘密情報（ANTHROPIC_API_KEY, INVOICE_API_ID, PRINT_AGENT_TOKEN など）は `wrangler secret put` で登録し、ここには書かない。
 }
