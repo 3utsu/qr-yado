@@ -1,0 +1,43 @@
+{
+  "_note": "架空データ（D-26）。名前は故人の歴史上の人物から借りているだけで、住所・旅券番号・職業・予定はすべて架空。顔写真は使わず、イニシャルの図柄にする。",
+  "operators": [
+    { "id": "op-ohira", "name": "大平正芳", "kind": "individual" },
+    { "id": "op-miki", "name": "三木武夫", "kind": "individual" },
+    { "id": "op-yoshida", "name": "吉田茂", "kind": "individual" },
+    { "id": "op-inukai", "name": "犬養毅", "kind": "individual" }
+  ],
+  "houses": [
+    { "id": "h-kaizuka-1", "operator_id": "op-inukai", "municipality_code": "38506", "community": "Kaizuka", "seq": 1, "label": "Kaizuka #1", "lat": 32.9617, "lng": 132.5656, "section_id": 40, "capacity": 6, "price": 5000, "donation": 500 },
+    { "id": "h-donari-1", "operator_id": "op-miki", "municipality_code": "36206", "community": "Donari", "seq": 1, "label": "Donari #1", "lat": 34.1097, "lng": 134.2536, "section_id": 9, "capacity": 6, "price": 5000, "donation": 500 },
+    { "id": "h-kochi-1", "operator_id": "op-yoshida", "municipality_code": "39201", "community": "Godaisan", "seq": 1, "label": "Godaisan #1", "lat": 33.5466, "lng": 133.5784, "section_id": 30, "capacity": 4, "price": 5000, "donation": 500 },
+    { "id": "h-kanonji-1", "operator_id": "op-ohira", "municipality_code": "37205", "community": "Kanonji", "seq": 1, "label": "Kanonji #1", "lat": 34.1286, "lng": 133.6522, "section_id": 68, "capacity": 6, "price": 5000, "donation": 500 }
+  ],
+  "staff": [
+    { "id": "s-higuchi", "operator_id": "op-inukai", "name": "樋口一葉", "daily_wage": 3000 },
+    { "id": "s-yosano", "operator_id": "op-inukai", "name": "与謝野晶子", "daily_wage": 3000 },
+    { "id": "s-tsuda", "operator_id": "op-inukai", "name": "津田梅子", "daily_wage": 3500 },
+    { "id": "s-hiratsuka", "operator_id": "op-inukai", "name": "平塚らいてう", "daily_wage": 3000 },
+    { "id": "s-hayashi", "operator_id": "op-inukai", "name": "林芙美子", "daily_wage": 2500 },
+    { "id": "s-uno", "operator_id": "op-miki", "name": "宇野千代", "daily_wage": 3000 },
+    { "id": "s-koda", "operator_id": "op-miki", "name": "幸田文", "daily_wage": 3000 },
+    { "id": "s-mukoda", "operator_id": "op-yoshida", "name": "向田邦子", "daily_wage": 3000 },
+    { "id": "s-nogami", "operator_id": "op-ohira", "name": "野上弥生子", "daily_wage": 3000 },
+    { "id": "s-uemura", "operator_id": "op-ohira", "name": "上村松園", "daily_wage": 3000 }
+  ],
+  "guests": [
+    { "id": "g-churchill", "name": "Winston Churchill", "nationality": "GBR", "language": "en", "kana_expected": "ウィンストン・チャーチル", "occupation": "Retired", "address": "1 Example Street, Woodstock, United Kingdom", "passport_no": "TEST00101", "passport_country": "GBR" },
+    { "id": "g-degaulle", "name": "Charles de Gaulle", "nationality": "FRA", "language": "fr", "kana_expected": "シャルル・ド・ゴール", "occupation": "Retired", "address": "2 Rue de l'Exemple, Colombey, France", "passport_no": "TEST00102", "passport_country": "FRA" },
+    { "id": "g-brandt", "name": "Willy Brandt", "nationality": "DEU", "language": "de", "kana_expected": "ヴィリー・ブラント", "occupation": "Retired", "address": "3 Beispielstrasse, Lübeck, Germany", "passport_no": "TEST00103", "passport_country": "DEU" },
+    { "id": "g-denuyl", "name": "Joop den Uyl", "nationality": "NLD", "language": "nl", "kana_expected": "ヨープ・デン・アイル", "occupation": "Retired", "address": "4 Voorbeeldstraat, Hilversum, Netherlands", "passport_no": "TEST00104", "passport_country": "NLD" },
+    { "id": "g-palme", "name": "Olof Palme", "nationality": "SWE", "language": "sv", "kana_expected": "オロフ・パルメ", "occupation": "Retired", "address": "5 Exempelgatan, Stockholm, Sweden", "passport_no": "TEST00105", "passport_country": "SWE" },
+    { "id": "g-jorgensen", "name": "Anker Jørgensen", "nationality": "DNK", "language": "da", "kana_expected": "アンカー・ヨーアンセン", "occupation": "Retired", "address": "6 Eksempelvej, Copenhagen, Denmark", "passport_no": "TEST00106", "passport_country": "DNK" },
+    { "id": "g-suarez", "name": "Adolfo Suárez", "nationality": "ESP", "language": "es", "kana_expected": "アドルフォ・スアレス", "occupation": "Retired", "address": "7 Calle Ejemplo, Ávila, Spain", "passport_no": "TEST00107", "passport_country": "ESP" },
+    { "id": "g-tarradellas", "name": "Josep Tarradellas", "nationality": "ESP", "language": "ca", "kana_expected": "ジュゼップ・タラデーリャス", "occupation": "Retired", "address": "8 Carrer Exemple, Barcelona, Spain", "passport_no": "TEST00108", "passport_country": "ESP" },
+    { "id": "g-mazowiecki", "name": "Tadeusz Mazowiecki", "nationality": "POL", "language": "pl", "kana_expected": "タデウシュ・マゾヴィエツキ", "occupation": "Retired", "address": "9 Ulica Przykładowa, Warsaw, Poland", "passport_no": "TEST00109", "passport_country": "POL" },
+    { "id": "g-fitzgerald", "name": "Garret FitzGerald", "nationality": "IRL", "language": "en", "kana_expected": "ギャレット・フィッツジェラルド", "occupation": "Retired", "address": "10 Example Lane, Dublin, Ireland", "passport_no": "TEST00110", "passport_country": "IRL" },
+    { "id": "g-degasperi", "name": "Alcide De Gasperi", "nationality": "ITA", "language": "it", "kana_expected": "アルチーデ・デ・ガスペリ", "occupation": "Retired", "address": "11 Via Esempio, Trento, Italy", "passport_no": "TEST00111", "passport_country": "ITA" },
+    { "id": "g-hawke", "name": "Bob Hawke", "nationality": "AUS", "language": "en", "kana_expected": "ボブ・ホーク", "occupation": "Retired", "address": "12 Example Road, Sydney, Australia", "passport_no": "TEST00112", "passport_country": "AUS" },
+    { "id": "g-trudeau", "name": "Pierre Trudeau", "nationality": "CAN", "language": "fr", "kana_expected": "ピエール・トルドー", "occupation": "Retired", "address": "13 Rue Exemple, Montréal, Canada", "passport_no": "TEST00113", "passport_country": "CAN" },
+    { "id": "g-havel", "name": "Václav Havel", "nationality": "CZE", "language": "cs", "kana_expected": "ヴァーツラフ・ハヴェル", "occupation": "Retired", "address": "14 Příkladová, Prague, Czechia", "passport_no": "TEST00114", "passport_country": "CZE" }
+  ]
+}
