@@ -9,6 +9,15 @@ import { firstKana } from "../domain/kana";
 import { monthlyPayroll } from "../domain/payroll";
 import { monthlyLedger } from "../domain/ledger";
 import { countryJa } from "./guest";
+import { renderSVG } from "uqr";
+
+// 玄関に貼る QR の先（本番の URL）。リクエストの origin から組み立てる
+export function houseUrl(origin: string, houseId: string): string {
+  return `${origin}/h/${houseId}`;
+}
+export function qrSvg(text: string): string {
+  return renderSVG(text, { pixelSize: 8, border: 2, ecc: "M" });
+}
 
 const print = new Hono<AppEnv>();
 
@@ -176,8 +185,42 @@ ${payroll.lines.map((l) => html`<tr><td>${l.staff.name}</td><td class="r">${l.da
   );
 }
 
-export async function renderJob(db: Db, job: { kind: string; ref_id: string | null; house_id: string }): Promise<Html | null> {
+// --- 玄関に貼る QR（A4 1枚。宿主はこれを貼るだけ：D-01） ---
+async function qrSheet(db: Db, houseId: string, origin: string): Promise<Html | null> {
+  const house = await db.house(houseId);
+  if (!house) return null;
+  const operator = await db.operator(house.operator_id);
+  const url = houseUrl(origin, house.id);
+  const lines = [
+    ["English", "Scan to book a bed or to check in"],
+    ["Français", "Scannez pour réserver ou vous enregistrer"],
+    ["Deutsch", "Scannen zum Buchen oder Einchecken"],
+    ["Español", "Escanea para reservar o registrarte"],
+    ["Nederlands", "Scan om te boeken of in te checken"],
+    ["Italiano", "Scansiona per prenotare o fare il check-in"],
+    ["Polski", "Zeskanuj, aby zarezerwować lub się zameldować"],
+    ["日本語", "予約とチェックインはこちら"],
+  ];
+  return sheet(
+    `${house.label} 玄関のQR`,
+    html`
+<div class="hdr"><div><strong style="color:#1F1B16">${house.label}</strong>　${operator?.name ?? ""}</div><div>Shikoku 88 · ${house.community}</div></div>
+<div style="display:flex;flex-direction:column;align-items:center;gap:6mm;margin-top:8mm">
+  <div class="serif" style="font-size:30pt;font-weight:700;line-height:1.1;text-align:center">Welcome, pilgrim.<br><span style="font-size:20pt;color:#C8401E">ようこそ、お遍路さん。</span></div>
+  <div style="width:110mm;height:110mm">${raw(qrSvg(url).replace("<svg ", '<svg style="width:110mm;height:110mm" '))}</div>
+  <div style="font-size:11pt;color:#6B6257">${url}</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:2mm 8mm;width:160mm;font-size:11pt;margin-top:4mm">
+    ${lines.map(([l, m]) => html`<div><span style="color:#6B6257;font-size:9pt">${l}</span><br>${m}</div>`)}
+  </div>
+  <div style="font-size:12pt;margin-top:4mm;text-align:center">¥${yen(house.price)} / night, cash at the house · ¥${yen(house.donation)} of it stays in the town<br><span style="color:#6B6257;font-size:10pt">1泊 ${yen(house.price)}円（現金）・うち ${yen(house.donation)}円は町へ</span></div>
+</div>
+<div style="position:absolute;bottom:12mm;left:18mm;right:18mm;display:flex;justify-content:space-between;font-size:9pt;color:#6B6257"><span>qr-yado · 宿主はこの紙を玄関に貼るだけ</span><span>印刷日 ${formatJa(nowJstIso().slice(0, 10))}</span></div>`,
+  );
+}
+
+export async function renderJob(db: Db, job: { kind: string; ref_id: string | null; house_id: string }, origin = "https://shikoku88.3utsu.com"): Promise<Html | null> {
   if (!job.ref_id) return null;
+  if (job.kind === "qr") return qrSheet(db, job.ref_id, origin);
   if (job.kind === "checkin") return checkinSheet(db, job.ref_id);
   if (job.kind === "schedule") {
     const [staffId, month] = job.ref_id.split(":");
@@ -190,12 +233,19 @@ export async function renderJob(db: Db, job: { kind: string; ref_id: string | nu
   return null;
 }
 
+// 玄関の QR（SVG。公開：中身は公開 URL なので）
+print.get("/h/:houseId/qr.svg", async (c) => {
+  const house = await new Db(c.env.DB).house(c.req.param("houseId")!);
+  if (!house) return c.notFound();
+  return new Response(qrSvg(houseUrl(new URL(c.req.url).origin, house.id)), { headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" } });
+});
+
 // 紙の HTML（合言葉が要る）
 print.get("/print/:jobId", requireAdmin, async (c) => {
   const db = new Db(c.env.DB);
   const job = await db.printJob(c.req.param("jobId")!);
   if (!job) return c.notFound();
-  const h = await renderJob(db, job);
+  const h = await renderJob(db, job, new URL(c.req.url).origin);
   if (!h) return c.notFound();
   return c.html(h);
 });

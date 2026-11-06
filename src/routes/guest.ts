@@ -44,14 +44,26 @@ guest.get("/h/:houseId", async (c) => {
   const from = todayJst();
   const nights = await nightsOfHouse(db, house, from, 14);
   const err = c.req.query("err");
+  // 巡礼カードを持つ人（クッキー）：今夜のこの宿の予約があればチェックインへ。なければその人として予約
+  const meId = getCookie(c, "qr_me");
+  const meGuest = meId ? await db.guest(meId) : null;
+  const mine = meGuest ? (await db.bookingsOfGuest(meGuest.id)).filter((b) => b.house_id === house.id && b.date >= from) : [];
+  const tonight = mine.find((b) => b.date === from);
   const body = html`
 ${topbar(t("app.tagline"))}
 <div class="wrap" style="display:flex;flex-direction:column;gap:14px">
   ${langBar(lang, `/h/${house.id}`)}
   <div><div class="eyebrow">Shikoku 88 · ${house.community}</div><h1 class="serif" style="font-size:30px">${house.label}</h1><div class="mute">${t("book.price_per_night", { price: yen(house.price) })}</div></div>
-  ${err ? html`<div class="notice">${err === "full" ? t("book.not_available") : err === "select" ? t("book.select_night") : t("common.error")}</div>` : ""}
+  ${meGuest
+    ? html`<div class="card" style="${tonight ? "background:#1F1B16;color:#F7F4EC;border-color:#1F1B16;" : ""}flex-direction:row;align-items:center;gap:12px">
+        <img src="/g/${meGuest.id}/photo" alt="" width="44" height="44" style="border-radius:50%;object-fit:cover;flex:0 0 auto">
+        <div style="flex:1 1 auto;min-width:0"><div style="font-weight:700">${t("me.hello", { name: meGuest.name })}</div><div style="font-size:12px;${tonight ? "color:#D9D2C4" : "color:#6B6257"}">${tonight ? (tonight.status === "booked" ? t("me.arrived") : tonight.status === "paid" ? t("me.paid") : t("me.checked")) : mine[0] ? `${t("me.booked")} ${mine[0].date}` : t("me.book_as", { name: meGuest.name })}</div></div>
+        ${tonight ? (tonight.status === "booked" ? html`<a class="btn sm" href="/b/${tonight.id}/checkin?lang=${lang}" style="background:#C8401E;white-space:nowrap">${t("me.checkin_now")}</a>` : html`<a class="btn sm line" href="/b/${tonight.id}/pay?lang=${lang}" style="color:#F7F4EC;border-color:#F7F4EC">→</a>`) : html`<a class="btn sm line" href="/me/${meGuest.id}?lang=${lang}">${t("me.card")}</a>`}
+      </div>`
+    : html`<div class="mute" style="font-size:13px"><a href="/me/new?lang=${lang}&back=/h/${house.id}">${t("me.get_card_link")}</a></div>`}
+  ${err ? html`<div class="notice">${err === "full" ? t("book.not_available") : err === "select" ? t("book.select_night") : err === "already" ? t("me.already") : t("common.error")}</div>` : ""}
   <form method="post" action="/h/${house.id}/book" style="display:flex;flex-direction:column;gap:14px">
-    <input type="hidden" name="lang" value="${lang}">
+    <input type="hidden" name="lang" value="${lang}">${meGuest ? html`<input type="hidden" name="guest_id" value="${meGuest.id}">` : ""}
     <div style="font-size:16px;font-weight:700">${t("book.title")}</div>
     <div class="grid4">
       ${nights.map((n) => {
@@ -70,7 +82,7 @@ ${topbar(t("app.tagline"))}
       <label class="opt"><input type="radio" name="direction" value="forward" checked><span>${t("book.forward")}</span></label>
       <label class="opt"><input type="radio" name="direction" value="reverse"><span>${t("book.reverse")}</span></label>
     </div>
-    <label class="f">${t("book.your_name")}<input type="text" name="name" required maxlength="80" autocomplete="name"></label>
+    <label class="f">${t("book.your_name")}<input type="text" name="name" ${meGuest ? html`value="${meGuest.name}" readonly` : "required"} maxlength="80" autocomplete="name"></label>
     <label class="f">${t("book.companions")}<textarea name="companions" maxlength="300" rows="2"></textarea></label>
     <div class="card" style="flex-direction:row;gap:10px;align-items:flex-start"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#C8401E" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.1-7-11a7 7 0 0 1 14 0c0 4.9-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><div style="font-size:13px">${t("book.cash_note", { donation: yen(house.donation) })}</div></div>
     <button class="btn" type="submit">${t("book.book")}</button>
@@ -92,12 +104,16 @@ guest.post("/h/:houseId/book", async (c) => {
   const date = String(f.date ?? "");
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return c.redirect(`/h/${house.id}?lang=${lang}&err=select`);
   const name = String(f.name ?? "").trim().slice(0, 80);
-  if (!name) return c.redirect(`/h/${house.id}?lang=${lang}&err=select`);
+  if (!name && !f.guest_id) return c.redirect(`/h/${house.id}?lang=${lang}&err=select`);
   const companions = String(f.companions ?? "").split(/\r?\n/).map((s) => s.trim().slice(0, 80)).filter(Boolean).slice(0, 5);
   const room_type = f.room_type === "private" ? "private" : "shared";
   const direction = f.direction === "reverse" ? "reverse" : "forward";
-  const r = await createBooking(db, house, { date, names: [name, ...companions], room_type, direction, language: lang });
-  if (!r.ok) return c.redirect(`/h/${house.id}?lang=${lang}&err=full`);
+  // 巡礼カードを持っている人（クッキー）は、その人として予約する（D-16：id はランダム）
+  const me = getCookie(c, "qr_me");
+  const meGuest = me && String(f.guest_id ?? "") === me ? await db.guest(me) : null;
+  const people = [meGuest ? { id: meGuest.id, name: meGuest.name } : { name }, ...companions.map((n) => ({ name: n }))];
+  const r = await createBooking(db, house, { date, people, room_type, direction, language: lang });
+  if (!r.ok) return c.redirect(`/h/${house.id}?lang=${lang}&err=${r.reason === "already" ? "already" : "full"}`);
   return c.redirect(`/p/${r.partyId}?lang=${lang}`);
 });
 

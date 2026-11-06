@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canAcceptNight, pickDuty } from "../src/domain/duty";
 import { monthlyPayroll } from "../src/domain/payroll";
 import { monthlyLedger } from "../src/domain/ledger";
+import { housesAhead, sectionsAhead, startSection } from "../src/domain/route";
 import { buildFreeeRows, FREEE_HEADERS, FREEE_REF_MAX, freeeConfigFrom, toFreeeCsv } from "../src/domain/freee";
 import { buildTd3, mrzCheckDigit, verifyTd3 } from "../src/domain/mrz";
 import { firstKana, isKatakanaName } from "../src/domain/kana";
@@ -182,5 +183,35 @@ describe("日付", () => {
   it("加算と日本語表記", () => {
     expect(addDays("2026-11-30", 1)).toBe("2026-12-01");
     expect(formatJa("2026-12-09")).toBe("2026年12月9日（水）");
+  });
+});
+
+describe("環状ルートの「この先」（D-17）", () => {
+  const sections = Array.from({ length: 88 }, (_, i) => ({ id: i + 1, length_m: 10000 }));
+  it("順打ちは番号が増える向き、逆打ちは減る向きに数える（88→1 をまたぐ）", () => {
+    expect(sectionsAhead(40, 41, "forward")).toBe(1);
+    expect(sectionsAhead(40, 39, "forward")).toBe(87);
+    expect(sectionsAhead(40, 39, "reverse")).toBe(1);
+    expect(sectionsAhead(87, 2, "forward")).toBe(3);
+    expect(sectionsAhead(2, 87, "reverse")).toBe(3);
+  });
+  it("開始の札所から最初の区間を決める", () => {
+    expect(startSection(40, "forward")).toBe(40);
+    expect(startSection(40, "reverse")).toBe(39);
+    expect(startSection(1, "reverse")).toBe(88);
+  });
+  it("宿を近い順に並べ、距離は区間の長さの合計", () => {
+    const houses = [
+      { id: "kanonji", section_id: 68 },
+      { id: "kaizuka", section_id: 40 },
+      { id: "kochi", section_id: 30 },
+      { id: "donari", section_id: 9 },
+    ];
+    const f = housesAhead(houses, 40, "forward", sections);
+    expect(f.map((h) => h.id)).toEqual(["kaizuka", "kanonji", "donari", "kochi"]);
+    expect(f[0].km).toBe(0);
+    expect(f[1].km).toBe(280); // 40→68 = 28 区間 × 10 km
+    const r = housesAhead(houses, 40, "reverse", sections, 12);
+    expect(r.map((h) => h.id)).toEqual(["kaizuka", "kochi"]); // 12 区間以内：同じ区間と 10 区間手前の高知
   });
 });

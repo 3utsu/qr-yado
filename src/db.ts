@@ -12,6 +12,7 @@ export type Guest = {
   id: string; name: string; name_kana: string | null; nationality: string | null; language: string | null; occupation: string | null;
   address: string | null; passport_no: string | null; passport_country: string | null; photo_key: string | null; passport_image_key: string | null;
   consent_photo_on_paper: number; note: string | null; note_ja: string | null;
+  start_temple?: number | null; direction?: string | null; start_date?: string | null; registered?: number;
 };
 export type Booking = {
   id: string; house_id: string; guest_id: string; date: string; room_type: string; party_id: string | null; direction: string;
@@ -137,8 +138,23 @@ export class Db {
   async guest(id: string): Promise<Guest | null> {
     return (await this.d1.prepare("SELECT * FROM guests WHERE id=?").bind(id).first<Guest>()) ?? null;
   }
-  async insertGuest(g: { id: string; name: string; language: string | null; nationality?: string | null }) {
-    await this.d1.prepare("INSERT INTO guests (id, name, language, nationality) VALUES (?,?,?,?)").bind(g.id, g.name, g.language, g.nationality ?? null).run();
+  async insertGuest(g: { id: string; name: string; language: string | null; nationality?: string | null; start_temple?: number | null; direction?: string | null; start_date?: string | null; registered?: number }) {
+    await this.d1
+      .prepare("INSERT INTO guests (id, name, language, nationality, start_temple, direction, start_date, registered) VALUES (?,?,?,?,?,?,?,?)")
+      .bind(g.id, g.name, g.language, g.nationality ?? null, g.start_temple ?? null, g.direction ?? null, g.start_date ?? null, g.registered ?? 0)
+      .run();
+  }
+  async bookingOfGuestOn(guestId: string, date: string): Promise<Booking | null> {
+    return (await this.d1.prepare("SELECT * FROM bookings WHERE guest_id=? AND date=? AND status!='cancelled'").bind(guestId, date).first<Booking>()) ?? null;
+  }
+  // 巡礼カード：その人の予約を日付順に（宿の名前つき）
+  async bookingsOfGuest(guestId: string): Promise<(Booking & { house_label: string; section_id: number; community: string })[]> {
+    return (
+      await this.d1
+        .prepare("SELECT b.*, h.label AS house_label, h.section_id, h.community FROM bookings b JOIN houses h ON h.id=b.house_id WHERE b.guest_id=? AND b.status!='cancelled' ORDER BY b.date")
+        .bind(guestId)
+        .all<Booking & { house_label: string; section_id: number; community: string }>()
+    ).results;
   }
   async updateGuest(id: string, f: Partial<Omit<Guest, "id">>) {
     const keys = Object.keys(f) as (keyof typeof f)[];

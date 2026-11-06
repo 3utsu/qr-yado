@@ -2,6 +2,7 @@ import { Hono } from "hono";
 import type { AppEnv, Bindings } from "./env";
 import { html, page, topbar } from "./lib/html";
 import guest from "./routes/guest";
+import me from "./routes/me";
 import print from "./routes/print";
 import operator from "./routes/operator";
 import admin from "./routes/admin";
@@ -41,6 +42,7 @@ app.get("/health", (c) =>
 
 app.route("/", auth);
 app.route("/", guest);
+app.route("/", me);
 app.route("/", print);
 app.route("/", operator);
 app.route("/", admin);

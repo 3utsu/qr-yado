@@ -51,19 +51,26 @@ export async function recomputeDuties(db: Db, operatorId: string, month: string)
   }
 }
 
-export type BookingRequest = { date: string; names: string[]; room_type: "shared" | "private"; direction: "forward" | "reverse"; language: string };
+export type BookingRequest = { date: string; people: { id?: string; name: string }[]; room_type: "shared" | "private"; direction: "forward" | "reverse"; language: string };
 
 export async function createBooking(db: Db, house: House, req: BookingRequest): Promise<{ ok: true; partyId: string; bookings: Booking[] } | { ok: false; reason: string }> {
   const [night] = await nightsOfHouse(db, house, req.date, 1);
-  const party = req.names.length;
+  const party = req.people.length;
   if (night.state === "closed" || night.state === "cap") return { ok: false, reason: night.state };
   if (req.room_type === "private" && night.booked > 0) return { ok: false, reason: "full" };
   if (!canAcceptNight(night.staff, house.capacity, night.booked, party)) return { ok: false, reason: "full" };
   const partyId = newId("pt", 8);
   const bookings: Booking[] = [];
-  for (const name of req.names) {
-    const guestId = newId("g");
-    await db.insertGuest({ id: guestId, name, language: req.language });
+  for (const p of req.people) {
+    // 巡礼カードを持つ人は既存の guest を使う（同行者は新しく作る）
+    let guestId = p.id ?? null;
+    if (guestId) {
+      const dup = await db.bookingOfGuestOn(guestId, req.date);
+      if (dup) return { ok: false, reason: "already" };
+    } else {
+      guestId = newId("g");
+      await db.insertGuest({ id: guestId, name: p.name, language: req.language });
+    }
     const b: Omit<Booking, "created_at"> = {
       id: newId("bk"), house_id: house.id, guest_id: guestId, date: req.date, room_type: req.room_type, party_id: partyId,
       direction: req.direction, price: house.price, donation: house.donation, status: "booked",
@@ -115,6 +122,18 @@ export async function enqueueSchedulePrint(db: Db, houseId: string, staffId: str
   }
   const id = newId("pj");
   await db.enqueuePrint({ id, house_id: houseId, kind: "schedule", ref_id: ref, print_no: null });
+  return id;
+}
+
+// 玄関に貼る QR の紙（宿ごとに1枚。もう一度押せば再印刷）
+export async function enqueueQrPrint(db: Db, houseId: string): Promise<string> {
+  const existing = await db.printJobByRef("qr", houseId);
+  if (existing) {
+    await db.setPrintStatus(existing.id, "queued", null);
+    return existing.id;
+  }
+  const id = newId("pj");
+  await db.enqueuePrint({ id, house_id: houseId, kind: "qr", ref_id: houseId, print_no: null });
   return id;
 }
 

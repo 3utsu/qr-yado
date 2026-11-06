@@ -10,7 +10,7 @@ import { monthlyLedger } from "../domain/ledger";
 import { buildFreeeRows, FREEE_CONFIG_LABELS, freeeConfigFrom, toFreeeCsv, type FreeeConfig } from "../domain/freee";
 import { cap180Status } from "../domain/cap180";
 import { periodicReport, reportPeriodFor } from "../domain/report";
-import { enqueueLedgerPrint, enqueueSchedulePrint, recomputeDuties } from "../services";
+import { enqueueLedgerPrint, enqueueQrPrint, enqueueSchedulePrint, recomputeDuties } from "../services";
 import { newId } from "../lib/id";
 import { countryJa } from "./guest";
 
@@ -91,7 +91,7 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
     ${upcoming.length === 0 ? html`<div class="mute">予約はありません。</div>` : html`<table class="t"><thead><tr><th>夜</th><th>宿</th><th>宿泊者</th><th>読み</th><th>国</th><th>状態</th></tr></thead><tbody>${upcoming.map(
       (b) => html`<tr><td>${formatJaShort(b.date)}</td><td>${b.house_label}</td><td>${b.guest_name}</td><td>${b.name_kana ?? ""}</td><td>${countryJa(b.nationality)}</td><td>${b.status === "paid" ? html`<span class="pill green">支払い済み</span>` : b.status === "checked_in" ? html`<span class="pill amber">チェックイン済み</span>` : html`<span class="pill gray">予約</span>`}</td></tr>`,
     )}</tbody></table>`}
-    <div class="mute">宿泊者用の入口（QR の先）：${houses.map((h) => html`<a href="/h/${h.id}">${h.label}</a> `)}</div>
+    <div class="row" style="gap:8px"><span class="mute">宿泊者用の入口（QR の先）：</span>${houses.map((h) => html`<a href="/h/${h.id}">${h.label}</a><form method="post" action="/op/${operator.id}/print/qr"><input type="hidden" name="house_id" value="${h.id}"><button class="btn sm line" type="submit">玄関のQRを印刷</button></form>`)}<a class="mute" href="/me/new">利用者の登録 →</a></div>
   </section>
 
   <section id="ledger" class="card">
@@ -134,7 +134,7 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
   <section id="print" class="card">
     <h2 style="font-size:20px">印刷待ち</h2>
     <div class="mute">宿の機器が取りに来ます（scripts/print-agent.sh）。</div>
-    ${jobs.map((j) => html`<div style="display:flex;gap:8px;align-items:center;border:1px solid #E3DDCF;border-radius:10px;padding:8px 12px"><div style="flex:1 1 auto"><strong>${j.kind === "checkin" ? "チェックイン" : j.kind === "schedule" ? "勤務予定表" : "帳簿"}</strong> ${j.print_no ?? j.ref_id ?? ""} <span class="mute">${j.house_label} · ${j.created_at.slice(5, 16).replace("T", " ")}</span></div>${j.status === "done" ? html`<span class="pill green">印刷済み</span>` : j.status === "failed" ? html`<span class="pill red">失敗</span>` : j.status === "printing" ? html`<span class="pill amber">印刷中</span>` : html`<span class="pill amber">印刷待ち</span>`}<a class="btn sm line" href="/print/${j.id}" target="_blank">見る</a><form method="post" action="/api/print/${j.id}/retry?back=/op/${operator.id}"><button class="btn sm line" type="submit">もう一度</button></form></div>`)}
+    ${jobs.map((j) => html`<div style="display:flex;gap:8px;align-items:center;border:1px solid #E3DDCF;border-radius:10px;padding:8px 12px"><div style="flex:1 1 auto"><strong>${j.kind === "checkin" ? "チェックイン" : j.kind === "schedule" ? "勤務予定表" : j.kind === "qr" ? "玄関のQR" : "帳簿"}</strong> ${j.print_no ?? j.ref_id ?? ""} <span class="mute">${j.house_label} · ${j.created_at.slice(5, 16).replace("T", " ")}</span></div>${j.status === "done" ? html`<span class="pill green">印刷済み</span>` : j.status === "failed" ? html`<span class="pill red">失敗</span>` : j.status === "printing" ? html`<span class="pill amber">印刷中</span>` : html`<span class="pill amber">印刷待ち</span>`}<a class="btn sm line" href="/print/${j.id}" target="_blank">見る</a><form method="post" action="/api/print/${j.id}/retry?back=/op/${operator.id}"><button class="btn sm line" type="submit">もう一度</button></form></div>`)}
   </section>
 
   <section id="houses" class="card">
@@ -166,6 +166,14 @@ op.post("/op/:operatorId/schedule", async (c) => {
   for (const s of staff) for (const d of datesOfMonth(month)) await db.setAvailable(s.id, d, on.has(`${s.id}|${d}`));
   await recomputeDuties(db, operatorId, month);
   return c.redirect(`/op/${operatorId}?month=${month}#schedule`);
+});
+
+op.post("/op/:operatorId/print/qr", async (c) => {
+  const db = new Db(c.env.DB);
+  const f = await c.req.parseBody();
+  const house = await db.house(String(f.house_id ?? ""));
+  if (house && house.operator_id === c.req.param("operatorId")) await enqueueQrPrint(db, house.id);
+  return c.redirect(`/op/${c.req.param("operatorId")}#print`);
 });
 
 op.post("/op/:operatorId/print/schedule", async (c) => {
