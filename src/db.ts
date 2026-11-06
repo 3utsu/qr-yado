@@ -1,4 +1,5 @@
 // D1 へのアクセス。SQL はここに集める。計算はしない（domain/ で行う）。
+import { nowJstIso } from "./lib/dates";
 
 export type Operator = { id: string; name: string; kind: string };
 export type House = {
@@ -249,8 +250,8 @@ export class Db {
   // --- 印刷待ち ---
   async enqueuePrint(j: { id: string; house_id: string; kind: string; ref_id: string; print_no: string | null }): Promise<boolean> {
     const r = await this.d1
-      .prepare("INSERT OR IGNORE INTO print_jobs (id, house_id, kind, ref_id, print_no) VALUES (?,?,?,?,?)")
-      .bind(j.id, j.house_id, j.kind, j.ref_id, j.print_no)
+      .prepare("INSERT OR IGNORE INTO print_jobs (id, house_id, kind, ref_id, print_no, created_at) VALUES (?,?,?,?,?,?)")
+      .bind(j.id, j.house_id, j.kind, j.ref_id, j.print_no, nowJstIso())
       .run();
     return (r.meta.changes ?? 0) > 0;
   }
