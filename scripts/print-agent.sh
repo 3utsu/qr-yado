@@ -35,7 +35,7 @@ except Exception: pass')
     echo "$(date '+%H:%M:%S') 印刷 $kind $no ($id)"
     curl -sS -m 10 -X POST -H "Authorization: Bearer $ADMIN_TOKEN" "$QR_YADO_URL/api/print/$id/printing" >/dev/null
     pdf="$WORK/$id.pdf"
-    "$CHROME" --headless=new --disable-gpu --no-pdf-header-footer --print-to-pdf="$pdf" --virtual-time-budget=8000 \
+    "$CHROME" --headless=new --disable-gpu --user-data-dir="$WORK/profile" --no-first-run --no-pdf-header-footer --print-to-pdf="$pdf" --virtual-time-budget=8000 \
       "$QR_YADO_URL/print/$id?token=$ADMIN_TOKEN" >/dev/null 2>&1
     if [ -s "$pdf" ]; then
       if lpr ${PRINTER:+-P "$PRINTER"} -o media=A4 "$pdf"; then
