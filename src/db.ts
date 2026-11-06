@@ -307,6 +307,9 @@ export class Db {
     const r = await this.d1.prepare("SELECT text FROM house_guides WHERE house_id=? AND lang=?").bind(houseId, lang).first<{ text: string }>();
     return r?.text ?? null;
   }
+  async houseGuides(houseId: string): Promise<{ lang: string; text: string; updated_at: string }[]> {
+    return (await this.d1.prepare("SELECT lang, text, updated_at FROM house_guides WHERE house_id=? ORDER BY lang").bind(houseId).all<{ lang: string; text: string; updated_at: string }>()).results;
+  }
   async setHouseGuide(houseId: string, lang: string, text: string) {
     await this.d1
       .prepare("INSERT INTO house_guides (house_id, lang, text) VALUES (?,?,?) ON CONFLICT(house_id, lang) DO UPDATE SET text=excluded.text, updated_at=datetime('now')")

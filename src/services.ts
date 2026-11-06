@@ -3,6 +3,8 @@ import { Db, type Booking, type Guest, type House } from "./db";
 import { canAcceptNight, pickDuty, type StaffLite } from "./domain/duty";
 import { canAddNight } from "./domain/cap180";
 import { newId, printNumber } from "./lib/id";
+import { translateGuide } from "./claude";
+import type { Bindings } from "./env";
 import { addDays, monthOf, nowJstIso } from "./lib/dates";
 
 export type NightStatus = { date: string; staff: number; booked: number; privateBooked: number; capacity: number; beds: number; state: "open" | "full" | "closed" | "cap" };
@@ -123,6 +125,21 @@ export async function enqueueSchedulePrint(db: Db, houseId: string, staffId: str
   const id = newId("pj");
   await db.enqueuePrint({ id, house_id: houseId, kind: "schedule", ref_id: ref, print_no: null });
   return id;
+}
+
+// 宿の案内と地域のきまりを、宿泊者の全言語に Claude で翻訳してキャッシュする（窓口が保存したとき。チェックイン時に待たせない）
+export async function translateGuidesForHouse(env: Bindings, db: Db, house: House, langs: string[]): Promise<{ lang: string; ok: boolean; error?: string }[]> {
+  const guideJa = house.guide_ja ?? "";
+  const rulesJa = house.rules_ja ?? "";
+  if (!guideJa && !rulesJa) return [];
+  const results = await Promise.allSettled(
+    langs.filter((l) => l !== "ja").map(async (lang) => {
+      const tr = await translateGuide(env, guideJa, rulesJa, lang);
+      await db.setHouseGuide(house.id, lang, JSON.stringify(tr));
+      return lang;
+    }),
+  );
+  return results.map((r, i) => (r.status === "fulfilled" ? { lang: r.value, ok: true } : { lang: langs.filter((l) => l !== "ja")[i], ok: false, error: String(r.reason).slice(0, 200) }));
 }
 
 // 玄関に貼る QR の紙（宿ごとに1枚。もう一度押せば再印刷）

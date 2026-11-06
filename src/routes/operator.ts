@@ -10,7 +10,8 @@ import { monthlyLedger } from "../domain/ledger";
 import { buildFreeeRows, FREEE_CONFIG_LABELS, freeeConfigFrom, toFreeeCsv, type FreeeConfig } from "../domain/freee";
 import { cap180Status } from "../domain/cap180";
 import { periodicReport, reportPeriodFor } from "../domain/report";
-import { enqueueLedgerPrint, enqueueQrPrint, enqueueSchedulePrint, recomputeDuties } from "../services";
+import { enqueueLedgerPrint, enqueueQrPrint, enqueueSchedulePrint, recomputeDuties, translateGuidesForHouse } from "../services";
+import { LANGS } from "../i18n";
 import { newId } from "../lib/id";
 import { countryJa } from "./guest";
 
@@ -51,6 +52,16 @@ op.get("/op/:operatorId", async (c) => {
   const payroll = monthlyPayroll(duties, staff, month);
   const ledger = monthlyLedger(month, paid, payroll.total);
   const freee = freeeConfigFrom(operator.freee_config);
+  const guides = new Map<string, Map<string, { guide: string; rules: string; updated_at: string }>>();
+  for (const h of houses) {
+    const m = new Map<string, { guide: string; rules: string; updated_at: string }>();
+    for (const g of await db.houseGuides(h.id)) {
+      try { const o = JSON.parse(g.text) as { guide: string; rules: string }; m.set(g.lang, { ...o, updated_at: g.updated_at }); } catch { /* 壊れたキャッシュは無視 */ }
+    }
+    guides.set(h.id, m);
+  }
+  const translated = c.req.query("translated");
+  const trErr = c.req.query("tr_err");
   const period = reportPeriodFor(today);
   const stays = await db.staysOfOperator(operator.id, period.from, period.to);
   const report = periodicReport(stays, period.from, period.to);
@@ -138,8 +149,19 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
   </section>
 
   <section id="houses" class="card">
-    <h2 style="font-size:20px">宿の案内と地域のきまり（日本語で書く → Claude が各言語にします）</h2>
-    ${houses.map((h) => html`<form method="post" action="/op/${operator.id}/house/${h.id}/guide" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E3DDCF;padding-top:10px"><div class="row"><strong>${h.label}</strong><span class="mute">布団 ${h.capacity}・1泊 ${yen(h.price)}円（うち寄付 ${yen(h.donation)}円）・QR の先：<a href="/h/${h.id}">/h/${h.id}</a></span></div><label class="f">宿の案内（お風呂、布団、朝の時間、ごはんのことなど）<textarea name="guide_ja" rows="4">${h.guide_ja ?? ""}</textarea></label><label class="f">地域のきまり（ゴミ、夜の音、近所へのあいさつなど）<textarea name="rules_ja" rows="3">${h.rules_ja ?? ""}</textarea></label><div><button class="btn sm" type="submit">保存</button></div></form>`)}
+    <h2 style="font-size:20px">宿の案内と地域のきまり（日本語で書く → Claude が7言語にします）</h2>
+    <div class="mute">宿主が話したことを窓口が日本語で書いて保存すると、Claude API が英・仏・独・西・蘭・伊・波の7言語に訳して保存します（住宅宿泊事業法の外国語案内：requirements.md）。宿泊者はチェックインの3/3でこれを母語で読んで同意します。</div>
+    ${translated ? html`<div class="notice" style="border-color:#3E6B46;color:#3E6B46">Claude が ${translated} 言語に翻訳しました${trErr ? html`（失敗：${trErr}）` : ""}。</div>` : ""}
+    ${houses.map((h) => {
+      const m = guides.get(h.id) ?? new Map();
+      return html`<form method="post" action="/op/${operator.id}/house/${h.id}/guide" style="display:flex;flex-direction:column;gap:8px;border-top:1px solid #E3DDCF;padding-top:10px"><div class="row"><strong>${h.label}</strong><span class="mute">布団 ${h.capacity}・1泊 ${yen(h.price)}円（うち寄付 ${yen(h.donation)}円）・QR の先：<a href="/h/${h.id}">/h/${h.id}</a></span></div>
+      <div class="grid2"><label class="f">宿の案内（お風呂、布団、朝の時間、ごはんのことなど）<textarea name="guide_ja" rows="5">${h.guide_ja ?? ""}</textarea></label><label class="f">地域のきまり（ゴミ、夜の音、近所へのあいさつなど）<textarea name="rules_ja" rows="5">${h.rules_ja ?? ""}</textarea></label></div>
+      <div class="row" style="gap:8px"><button class="btn sm" type="submit">保存して Claude で翻訳（10秒ほど）</button><span class="mute">翻訳済み：</span>${LANGS.filter((l) => l.code !== "ja").map((l) => html`<span class="pill ${m.has(l.code) ? "green" : ""}" title="${m.get(l.code)?.updated_at ?? "未翻訳"}">${l.label}</span>`)}</div>
+      ${m.size
+        ? html`<details><summary class="mute" style="cursor:pointer">翻訳を見る（${m.size}言語）</summary><div class="grid2" style="margin-top:8px">${[...m.entries()].map(([code, g]) => html`<div class="card" style="gap:6px"><div class="eyebrow">${LANGS.find((l) => l.code === code)?.label ?? code}</div><div style="font-size:13px;white-space:pre-wrap">${g.guide}</div><div style="font-size:13px;white-space:pre-wrap;color:#C8401E">${g.rules}</div></div>`)}</div></details>`
+        : ""}
+      </form>`;
+    })}
   </section>
 </div>`;
   return c.html(page({ title: `${operator.name} · 事業主の画面`, body, wide: true }));
@@ -218,11 +240,18 @@ op.post("/op/:operatorId/freee", async (c) => {
   return c.redirect(`/op/${c.req.param("operatorId")}?month=${String(f.month ?? "")}#ledger`);
 });
 
+// 保存 → Claude で7言語に翻訳（並列、10秒ほど）。失敗した言語はチェックイン時にもう一度試す（guideFor）
 op.post("/op/:operatorId/house/:houseId/guide", async (c) => {
   const db = new Db(c.env.DB);
   const f = await c.req.parseBody();
-  await db.updateHouseGuide(c.req.param("houseId"), String(f.guide_ja ?? "").slice(0, 4000), String(f.rules_ja ?? "").slice(0, 4000));
-  return c.redirect(`/op/${c.req.param("operatorId")}#houses`);
+  const houseId = c.req.param("houseId");
+  await db.updateHouseGuide(houseId, String(f.guide_ja ?? "").slice(0, 4000), String(f.rules_ja ?? "").slice(0, 4000));
+  const house = await db.house(houseId);
+  if (!house) return c.notFound();
+  const results = await translateGuidesForHouse(c.env, db, house, LANGS.map((l) => l.code));
+  const ok = results.filter((r) => r.ok).map((r) => r.lang).join("・");
+  const ng = results.filter((r) => !r.ok).map((r) => `${r.lang}: ${r.error ?? ""}`).join(" / ");
+  return c.redirect(`/op/${c.req.param("operatorId")}?translated=${encodeURIComponent(ok || "0")}${ng ? `&tr_err=${encodeURIComponent(ng.slice(0, 300))}` : ""}#houses`);
 });
 
 export default op;
