@@ -28,7 +28,16 @@ app.get("/", (c) =>
   ),
 );
 
-app.get("/health", (c) => c.json({ ok: true, env: c.env?.APP_ENV ?? "unknown" }));
+// 秘密情報は値を出さず、設定されているかどうかだけを返す（設定場所の確認用）
+app.get("/health", (c) =>
+  c.json({
+    ok: true,
+    env: c.env?.APP_ENV ?? "unknown",
+    model: c.env?.CLAUDE_MODEL ?? null,
+    secrets: { ANTHROPIC_API_KEY: !!c.env?.ANTHROPIC_API_KEY, INVOICE_API_ID: !!c.env?.INVOICE_API_ID, ADMIN_TOKEN: !!c.env?.ADMIN_TOKEN },
+    bindings: { DB: !!c.env?.DB, BUCKET: !!c.env?.BUCKET },
+  }),
+);
 
 app.route("/", auth);
 app.route("/", guest);
