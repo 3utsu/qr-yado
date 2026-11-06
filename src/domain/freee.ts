@@ -58,9 +58,11 @@ export function freeeRef(s: string): string {
   return s.slice(0, FREEE_REF_MAX);
 }
 
+// freee の列のうち、使わない任意の列（取引先コード・部門・メモタグ・セグメント1〜3）は出さない。
+// プランによって「無効な列」の警告になるため（2026-11-06 の取り込みテストで確認）
 export const FREEE_HEADERS = [
-  "収支区分", "管理番号", "発生日", "決済期日", "取引先コード", "取引先", "勘定科目", "税区分", "金額",
-  "税計算区分", "税額", "備考", "品目", "部門", "メモタグ", "セグメント1", "セグメント2", "セグメント3",
+  "収支区分", "管理番号", "発生日", "決済期日", "取引先", "勘定科目", "税区分", "金額",
+  "税計算区分", "税額", "備考", "品目",
   "決済日", "決済口座", "決済金額",
 ] as const;
 
@@ -94,8 +96,8 @@ export function toFreeeCsv(rows: FreeeRow[]): string {
     const settled = r.settledOn !== undefined;
     lines.push(
       [
-        r.kind, r.ref, slash(r.date), "", "", r.partner, r.account, r.tax, r.amount,
-        "", "", r.memo, r.item ?? "", "", "", "", "", "",
+        r.kind, r.ref, slash(r.date), "", r.partner, r.account, r.tax, r.amount,
+        "", "", r.memo, r.item ?? "",
         settled ? slash(r.settledOn!) : "", settled ? (r.settleAccount ?? "") : "", settled ? r.amount : "",
       ].map(cell).join(","),
     );

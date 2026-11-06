@@ -69,10 +69,12 @@ describe("freee 取引インポート CSV（D-23）", () => {
     const lines = csv.replace("﻿", "").trim().split("\r\n");
     expect(lines[0]).toBe(FREEE_HEADERS.join(","));
     expect(lines[0].split(",")[0]).toBe("収支区分");
-    expect(lines[1]).toContain("収入,bk_1,2026/11/09,,,Winston Churchill,売上高,課税売上10%,5000");
+    expect(lines[0]).not.toContain("セグメント"); // 使わない任意の列は出さない
+    expect(lines[1].split(",")).toHaveLength(FREEE_HEADERS.length);
+    expect(lines[1]).toContain("収入,bk_1,2026/11/09,,Winston Churchill,売上高,課税売上10%,5000");
     expect(lines[1]).toContain(",2026/11/09,現金,5000");
-    expect(lines[2]).toContain("支出,W2611-s-a,2026/11/30,,,樋口一葉,給料賃金,対象外,6000");
-    expect(lines[3]).toContain("支出,D2611-town,2026/11/30,,,町（宿泊者からの寄付の預かり）,預り金,対象外,500");
+    expect(lines[2]).toContain("支出,W2611-s-a,2026/11/30,,樋口一葉,給料賃金,対象外,6000");
+    expect(lines[3]).toContain("支出,D2611-town,2026/11/30,,町（宿泊者からの寄付の預かり）,預り金,対象外,500");
     expect(lines[3].endsWith(",,,")).toBe(true); // 寄付は未決済（決済日・口座・金額が空）
     expect(lines).toHaveLength(4);
   });
