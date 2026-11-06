@@ -126,4 +126,10 @@ export const nl: Partial<Dict> = {
   "me.paid": "Betaald ✓",
   "me.standby": "Is de route vol, dan gaat een buurthuis open en wordt het de dag ervoor om 12 uur toegewezen.",
   "me.date_bad": "Vul de eerste nacht in (JJJJ-MM-DD).",
+  "me.opens_at": "Boeken voor deze nacht opent {day} {date} om 12 uur. Pelgrims boeken de volgende nachten onderweg, zodat bedden gaan naar wie op de route is.",
+  "me.too_far": "De eerste nacht kun je tot {n} dagen vooruit boeken.",
+  "me.window_rule": "Eerste nacht: tot {n} dagen vooruit. Andere nachten: vanaf 12 uur twee dagen ervoor.",
+  "me.not_open": "Boeken voor die nacht is nog niet open.",
+  "me.cancel": "deze nacht annuleren",
+  "me.opens_short": "{date} 12 uur",
 };

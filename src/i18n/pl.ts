@@ -126,4 +126,10 @@ export const pl: Partial<Dict> = {
   "me.paid": "Zapłacono ✓",
   "me.standby": "Gdy szlak jest pełny, otwiera się dom kultury, przydzielany w południe dnia poprzedniego.",
   "me.date_bad": "Podaj pierwszą noc (RRRR-MM-DD).",
+  "me.opens_at": "Rezerwacja tej nocy otwiera się {day} {date} w południe. Pielgrzymi rezerwują kolejne noce w drodze, więc łóżka trafiają do tych, którzy są na szlaku.",
+  "me.too_far": "Pierwszą noc można zarezerwować do {n} dni naprzód.",
+  "me.window_rule": "Pierwsza noc: do {n} dni naprzód. Pozostałe: od południa dwa dni wcześniej.",
+  "me.not_open": "Rezerwacja tej nocy nie jest jeszcze otwarta.",
+  "me.cancel": "odwołaj tę noc",
+  "me.opens_short": "{date} południe",
 };

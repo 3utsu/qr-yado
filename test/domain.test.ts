@@ -3,6 +3,7 @@ import { canAcceptNight, pickDuty } from "../src/domain/duty";
 import { monthlyPayroll } from "../src/domain/payroll";
 import { monthlyLedger } from "../src/domain/ledger";
 import { housesAhead, sectionsAhead, startSection } from "../src/domain/route";
+import { bookingWindow } from "../src/domain/window";
 import { buildFreeeRows, FREEE_HEADERS, FREEE_REF_MAX, freeeConfigFrom, toFreeeCsv } from "../src/domain/freee";
 import { buildTd3, mrzCheckDigit, verifyTd3 } from "../src/domain/mrz";
 import { firstKana, isKatakanaName } from "../src/domain/kana";
@@ -213,5 +214,22 @@ describe("環状ルートの「この先」（D-17）", () => {
     expect(f[1].km).toBe(280); // 40→68 = 28 区間 × 10 km
     const r = housesAhead(houses, 40, "reverse", sections, 12);
     expect(r.map((h) => h.id)).toEqual(["kaizuka", "kochi"]); // 12 区間以内：同じ区間と 10 区間手前の高知
+  });
+});
+
+describe("受付の窓（D-13）：最初の夜は60日前、2泊目からは前々日の正午", () => {
+  it("最初の夜は60日先まで受ける", () => {
+    expect(bookingWindow("2026-12-09", true, "2026-11-06T19:00").open).toBe(true);
+    expect(bookingWindow("2027-01-05", true, "2026-11-06T19:00").open).toBe(true); // 60日目
+    expect(bookingWindow("2027-01-06", true, "2026-11-06T19:00")).toMatchObject({ open: false, reason: "too_far" });
+  });
+  it("2泊目からは前々日の正午に開く", () => {
+    expect(bookingWindow("2026-11-08", false, "2026-11-06T11:59")).toMatchObject({ open: false, reason: "not_yet", opensAt: "2026-11-06T12:00" });
+    expect(bookingWindow("2026-11-08", false, "2026-11-06T12:00").open).toBe(true);
+    expect(bookingWindow("2026-11-09", false, "2026-11-06T19:03")).toMatchObject({ open: false, opensAt: "2026-11-07T12:00" });
+    expect(bookingWindow("2026-11-07", false, "2026-11-06T19:03").open).toBe(true);
+  });
+  it("過ぎた夜は受けない", () => {
+    expect(bookingWindow("2026-11-05", true, "2026-11-06T09:00")).toMatchObject({ open: false, reason: "past" });
   });
 });

@@ -131,4 +131,10 @@ export const ja: Partial<Dict> = {
   "me.paid": "支払い済み ✓",
   "me.standby": "道が混むときは公民館が開き、前日の正午に割り当てます。",
   "me.date_bad": "最初の夜を入れてください（YYYY-MM-DD）。",
+  "me.opens_at": "この夜の予約は {date}（{day}）の正午に開きます。歩きながら次の夜を取る決まりなので、道にいる人に宿が回ります。",
+  "me.too_far": "最初の夜は{n}日先まで予約できます。",
+  "me.window_rule": "最初の夜は{n}日先まで。2泊目からは前々日の正午から。",
+  "me.not_open": "その夜の予約はまだ開いていません。",
+  "me.cancel": "この夜を取り消す",
+  "me.opens_short": "{date} 正午から",
 };

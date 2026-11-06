@@ -126,4 +126,10 @@ export const de: Partial<Dict> = {
   "me.paid": "Bezahlt ✓",
   "me.standby": "Ist der Weg voll, öffnet ein Gemeindehaus und wird am Vortag um 12 Uhr zugeteilt.",
   "me.date_bad": "Bitte die erste Nacht eingeben (JJJJ-MM-TT).",
+  "me.opens_at": "Die Buchung für diese Nacht öffnet am {day} {date} um 12 Uhr. Pilger buchen die nächsten Nächte unterwegs, damit die Betten an die gehen, die auf dem Weg sind.",
+  "me.too_far": "Die erste Nacht kann bis {n} Tage im Voraus gebucht werden.",
+  "me.window_rule": "Erste Nacht: bis {n} Tage im Voraus. Weitere Nächte: ab 12 Uhr zwei Tage vorher.",
+  "me.not_open": "Die Buchung für diese Nacht ist noch nicht offen.",
+  "me.cancel": "diese Nacht stornieren",
+  "me.opens_short": "{date} 12 Uhr",
 };

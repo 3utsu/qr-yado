@@ -126,4 +126,10 @@ export const it: Partial<Dict> = {
   "me.paid": "Pagato ✓",
   "me.standby": "Se il cammino è pieno, si apre una sala comunale, assegnata a mezzogiorno del giorno prima.",
   "me.date_bad": "Inserisci la prima notte (AAAA-MM-GG).",
+  "me.opens_at": "La prenotazione di questa notte si apre {day} {date} a mezzogiorno. I pellegrini prenotano le notti successive camminando, così i letti vanno a chi è sul cammino.",
+  "me.too_far": "La prima notte si può prenotare fino a {n} giorni prima.",
+  "me.window_rule": "Prima notte: fino a {n} giorni prima. Le altre: da mezzogiorno di due giorni prima.",
+  "me.not_open": "La prenotazione di quella notte non è ancora aperta.",
+  "me.cancel": "annulla questa notte",
+  "me.opens_short": "{date} mezzogiorno",
 };

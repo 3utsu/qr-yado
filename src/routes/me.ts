@@ -5,15 +5,22 @@ import type { AppEnv } from "../env";
 import { Db, type Guest, type House } from "../db";
 import { dict, LANGS, pickLang, type Lang } from "../i18n";
 import { html, initials, page, topbar, yen, type Html } from "../lib/html";
-import { addDays, todayJst, WEEKDAY_EN } from "../lib/dates";
-import { createBooking, nightsOfHouse } from "../services";
+import { addDays, nowJstIso, todayJst, WEEKDAY_EN } from "../lib/dates";
+import { createBooking, nightsOfHouse, recomputeDuties } from "../services";
 import { housesAhead, startSection } from "../domain/route";
+import { bookingWindow, FIRST_NIGHT_DAYS_AHEAD } from "../domain/window";
 import { newId } from "../lib/id";
 import routeData from "../data/route_sections.json";
 
 const me = new Hono<AppEnv>();
 export const ME_COOKIE = "qr_me";
-const AHEAD_DAYS = 60; // 初回の受付は60日前まで（D-13）
+const AHEAD_DAYS = FIRST_NIGHT_DAYS_AHEAD; // 最初の夜は60日前から。2泊目からは前々日の正午から（D-13、domain/window.ts）
+
+// その人にとって「最初の夜」か：登録した最初の夜。未設定なら、まだ予約が1つもないとき
+function isFirstNight(g: { start_date?: string | null }, date: string, bookings: { date: string }[]): boolean {
+  if (g.start_date) return date === g.start_date && !bookings.some((b) => b.date < date);
+  return bookings.length === 0;
+}
 const SECTIONS = (routeData as { sections: { id: number; length_m: number; from: number; to: number }[] }).sections;
 
 function langOf(c: { req: { query: (k: string) => string | undefined; header: (k: string) => string | undefined } }): Lang {
@@ -122,6 +129,7 @@ me.get("/me/:guestId", async (c) => {
   const ahead = housesAhead(houses, fromSection, direction, SECTIONS).slice(0, 6); // 近い順に6軒（宿が少ないうちは遠くても出す）
   const nights = await Promise.all(ahead.map(async (h) => ({ house: h, night: (await nightsOfHouse(db, h, pickDate, 1))[0] })));
   const alreadyThatNight = bookings.find((b) => b.date === pickDate);
+  const win = bookingWindow(pickDate, isFirstNight(g, pickDate, bookings), nowJstIso().slice(0, 16));
   const err = c.req.query("err");
   const w = (d: string) => WEEKDAY_EN[new Date(`${d}T00:00:00Z`).getUTCDay()];
   const short = (d: string) => `${new Date(`${d}T00:00:00Z`).toLocaleString("en", { month: "short", timeZone: "UTC" })} ${Number(d.slice(8, 10))}`;
@@ -131,7 +139,7 @@ ${topbar(t("app.tagline"))}
 <div class="wrap" style="display:flex;flex-direction:column;gap:14px">
   ${langBar(lang, `/me/${g.id}`)}
   ${c.req.query("new") ? html`<div class="notice" style="border-color:#3E6B46;color:#3E6B46">${t("me.save_link")}：<code style="font-size:12px;word-break:break-all">${new URL(c.req.url).origin}/me/${g.id}</code></div>` : ""}
-  ${err ? html`<div class="notice">${err === "already" ? t("me.already") : t("book.not_available")}</div>` : ""}
+  ${err ? html`<div class="notice">${err === "already" ? t("me.already") : err === "window" ? t("me.not_open") : t("book.not_available")}</div>` : ""}
   <div class="card" style="flex-direction:row;align-items:center;gap:12px">
     <img src="/g/${g.id}/photo" alt="" width="48" height="48" style="border-radius:50%;object-fit:cover;flex:0 0 auto">
     <div style="flex:1 1 auto;min-width:0"><div class="eyebrow">${t("me.card")}</div><div class="serif" style="font-size:22px;font-weight:700;line-height:1.1">${g.name}</div>
@@ -149,20 +157,22 @@ ${topbar(t("app.tagline"))}
       (b) => html`<div style="display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:center">
         <div style="text-align:right;font-size:12px" class="mute"><div style="font-weight:700;color:#1F1B16">${short(b.date)}</div>${w(b.date)}</div>
         <a href="/p/${b.party_id}?lang=${lang}" class="card" style="flex-direction:row;align-items:center;gap:8px;padding:10px 12px;text-decoration:none"><div style="flex:1 1 auto"><div style="font-weight:700">${b.house_label}</div><div class="mute" style="font-size:12px">${b.community} · ${b.room_type === "private" ? t("book.private") : t("book.shared")} · ¥${yen(b.price)}</div></div><div style="font-size:12px;font-weight:700;color:#3E6B46">${status(b.status)}</div></a>
+        ${b.status === "booked" ? html`<div></div><form method="post" action="/me/${g.id}/cancel" style="text-align:right"><input type="hidden" name="lang" value="${lang}"><input type="hidden" name="booking_id" value="${b.id}"><button type="submit" class="mute" style="background:none;border:0;font:inherit;font-size:12px;text-decoration:underline;cursor:pointer">${t("me.cancel")}</button></form>` : ""}
       </div>`,
     )}
     <div style="display:grid;grid-template-columns:54px 1fr;gap:8px;align-items:start">
       <div style="text-align:right;font-size:12px;padding-top:8px" class="mute"><div style="font-weight:700;color:#C8401E">${short(pickDate)}</div>${w(pickDate)}</div>
       <div style="display:flex;flex-direction:column;gap:6px">
         <div class="row" style="font-size:12px"><span style="color:#C8401E;font-weight:700">${alreadyThatNight ? t("me.booked") : t("me.no_bed")} · ${t("me.pick")}</span><span><a href="/me/${g.id}?lang=${lang}&date=${addDays(pickDate, -1)}">${t("me.prev")}</a>　<a href="/me/${g.id}?lang=${lang}&date=${addDays(pickDate, 1)}">${t("me.next")}</a></span></div>
+        ${!win.open && !alreadyThatNight ? html`<div class="notice" style="font-size:13px">${win.reason === "not_yet" ? t("me.opens_at", { date: short(win.opensAt!.slice(0, 10)), day: w(win.opensAt!.slice(0, 10)) }) : win.reason === "too_far" ? t("me.too_far", { n: AHEAD_DAYS }) : t("book.not_available")}</div>` : ""}
         ${nights.map(({ house, night }) => {
-          const open = night.state === "open" && !alreadyThatNight;
+          const open = night.state === "open" && !alreadyThatNight && win.open;
           const label = night.state === "open" ? t("me.beds_duty", { n: night.beds }) : night.state === "full" ? t("me.full") : night.staff === 0 ? t("me.no_host") : t("book.closed");
           return html`<div class="card" style="flex-direction:row;align-items:center;gap:8px;padding:10px 12px"><div style="flex:1 1 auto"><div style="font-weight:700">${house.label}</div><div style="font-size:12px;${open ? "color:#3E6B46;font-weight:500" : ""}" class="${open ? "" : "mute"}">${house.ahead === 0 ? t("me.same_section") : t("me.km_ahead", { km: house.km })} · ${label}</div></div>
             ${open ? html`<form method="post" action="/me/${g.id}/book"><input type="hidden" name="lang" value="${lang}"><input type="hidden" name="house_id" value="${house.id}"><input type="hidden" name="date" value="${pickDate}"><button class="btn sm line" type="submit">${t("me.book")}</button></form>` : ""}
           </div>`;
         })}
-        <div class="mute" style="font-size:12px">${t("me.standby")}</div>
+        <div class="mute" style="font-size:12px">${t("me.window_rule", { n: AHEAD_DAYS })} ${t("me.standby")}</div>
       </div>
     </div>
   </div>
@@ -180,10 +190,29 @@ me.post("/me/:guestId/book", async (c) => {
   const house = await db.house(String(f.house_id ?? ""));
   const today = todayJst();
   if (!house || !/^\d{4}-\d{2}-\d{2}$/.test(date) || date < today || date > addDays(today, AHEAD_DAYS)) return c.redirect(`/me/${g.id}?lang=${lang}&err=full`);
+  const mine = await db.bookingsOfGuest(g.id);
+  const win = bookingWindow(date, isFirstNight(g, date, mine), nowJstIso().slice(0, 16));
+  if (!win.open) return c.redirect(`/me/${g.id}?lang=${lang}&date=${date}&err=window`);
   const direction = (g.direction === "reverse" ? "reverse" : "forward") as "forward" | "reverse";
   const r = await createBooking(db, house, { date, people: [{ id: g.id, name: g.name }], room_type: "shared", direction, language: lang });
   if (!r.ok) return c.redirect(`/me/${g.id}?lang=${lang}&date=${date}&err=${r.reason === "already" ? "already" : "full"}`);
   setMeCookie(c, g.id);
+  return c.redirect(`/me/${g.id}?lang=${lang}`);
+});
+
+// 取り消し（チェックイン前のみ）。その夜の当番は見直す
+me.post("/me/:guestId/cancel", async (c) => {
+  const db = new Db(c.env.DB);
+  const g = await db.guest(c.req.param("guestId"));
+  if (!g) return c.notFound();
+  const f = await c.req.parseBody();
+  const lang = pickLang(String(f.lang ?? ""), undefined, undefined);
+  const b = await db.booking(String(f.booking_id ?? ""));
+  if (b && b.guest_id === g.id && b.status === "booked") {
+    await db.setBookingStatus(b.id, "cancelled");
+    const house = await db.house(b.house_id);
+    if (house) await recomputeDuties(db, house.operator_id, b.date.slice(0, 7));
+  }
   return c.redirect(`/me/${g.id}?lang=${lang}`);
 });
 

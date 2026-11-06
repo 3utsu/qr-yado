@@ -11,6 +11,8 @@ import { kanaForName, noteToJapanese, readPassport, translateGuide } from "../cl
 import { verifyTd3 } from "../domain/mrz";
 import { isKatakanaName } from "../domain/kana";
 import { newId } from "../lib/id";
+import { bookingWindow } from "../domain/window";
+import { nowJstIso } from "../lib/dates";
 
 const guest = new Hono<AppEnv>();
 
@@ -47,8 +49,11 @@ guest.get("/h/:houseId", async (c) => {
   // 巡礼カードを持つ人（クッキー）：今夜のこの宿の予約があればチェックインへ。なければその人として予約
   const meId = getCookie(c, "qr_me");
   const meGuest = meId ? await db.guest(meId) : null;
-  const mine = meGuest ? (await db.bookingsOfGuest(meGuest.id)).filter((b) => b.house_id === house.id && b.date >= from) : [];
+  const all = meGuest ? await db.bookingsOfGuest(meGuest.id) : [];
+  const mine = all.filter((b) => b.house_id === house.id && b.date >= from);
   const tonight = mine.find((b) => b.date === from);
+  // カードを持つ人：2泊目からは前々日の正午から（D-13）。カードなしの人は最初の夜なので60日先まで
+  const windowOf = (date: string) => bookingWindow(date, meGuest ? (meGuest.start_date ? date === meGuest.start_date && !all.some((b) => b.date < date) : all.length === 0) : true, nowJstIso().slice(0, 16));
   const body = html`
 ${topbar(t("app.tagline"))}
 <div class="wrap" style="display:flex;flex-direction:column;gap:14px">
@@ -61,7 +66,7 @@ ${topbar(t("app.tagline"))}
         ${tonight ? (tonight.status === "booked" ? html`<a class="btn sm" href="/b/${tonight.id}/checkin?lang=${lang}" style="background:#C8401E;white-space:nowrap">${t("me.checkin_now")}</a>` : html`<a class="btn sm line" href="/b/${tonight.id}/pay?lang=${lang}" style="color:#F7F4EC;border-color:#F7F4EC">→</a>`) : html`<a class="btn sm line" href="/me/${meGuest.id}?lang=${lang}">${t("me.card")}</a>`}
       </div>`
     : html`<div class="mute" style="font-size:13px"><a href="/me/new?lang=${lang}&back=/h/${house.id}">${t("me.get_card_link")}</a></div>`}
-  ${err ? html`<div class="notice">${err === "full" ? t("book.not_available") : err === "select" ? t("book.select_night") : err === "already" ? t("me.already") : t("common.error")}</div>` : ""}
+  ${err ? html`<div class="notice">${err === "full" ? t("book.not_available") : err === "select" ? t("book.select_night") : err === "already" ? t("me.already") : err === "window" ? t("me.not_open") : t("common.error")}</div>` : ""}
   <form method="post" action="/h/${house.id}/book" style="display:flex;flex-direction:column;gap:14px">
     <input type="hidden" name="lang" value="${lang}">${meGuest ? html`<input type="hidden" name="guest_id" value="${meGuest.id}">` : ""}
     <div style="font-size:16px;font-weight:700">${t("book.title")}</div>
@@ -69,8 +74,9 @@ ${topbar(t("app.tagline"))}
       ${nights.map((n) => {
         const d = Number(n.date.slice(8, 10));
         const w = WEEKDAY_EN[new Date(`${n.date}T00:00:00Z`).getUTCDay()];
-        const off = n.state !== "open";
-        const label = n.state === "open" ? t("book.beds", { n: n.beds }) : n.state === "full" ? t("book.full") : n.state === "closed" ? (n.staff === 0 ? t("book.no_host") : t("book.closed")) : t("book.closed");
+        const win = windowOf(n.date);
+        const off = n.state !== "open" || !win.open;
+        const label = n.state === "open" ? (win.open ? t("book.beds", { n: n.beds }) : win.reason === "not_yet" ? t("me.opens_short", { date: `${Number(win.opensAt!.slice(5, 7))}/${Number(win.opensAt!.slice(8, 10))}` }) : t("book.closed")) : n.state === "full" ? t("book.full") : n.state === "closed" ? (n.staff === 0 ? t("book.no_host") : t("book.closed")) : t("book.closed");
         return html`<label class="night ${off ? "off" : ""}"><input type="radio" name="date" value="${n.date}" ${off ? "disabled" : ""} style="position:absolute;opacity:0;width:0;height:0"><span class="mute" style="font-size:11px">${w}</span><span class="d" style="${off ? "color:#8A8176" : ""}">${d}</span><span class="s ${off ? "mute" : "ok"}">${label}</span></label>`;
       })}
     </div>
@@ -111,6 +117,11 @@ guest.post("/h/:houseId/book", async (c) => {
   // 巡礼カードを持っている人（クッキー）は、その人として予約する（D-16：id はランダム）
   const me = getCookie(c, "qr_me");
   const meGuest = me && String(f.guest_id ?? "") === me ? await db.guest(me) : null;
+  if (meGuest) {
+    const all = await db.bookingsOfGuest(meGuest.id);
+    const first = meGuest.start_date ? date === meGuest.start_date && !all.some((b) => b.date < date) : all.length === 0;
+    if (!bookingWindow(date, first, nowJstIso().slice(0, 16)).open) return c.redirect(`/h/${house.id}?lang=${lang}&err=window`);
+  }
   const people = [meGuest ? { id: meGuest.id, name: meGuest.name } : { name }, ...companions.map((n) => ({ name: n }))];
   const r = await createBooking(db, house, { date, people, room_type, direction, language: lang });
   if (!r.ok) return c.redirect(`/h/${house.id}?lang=${lang}&err=${r.reason === "already" ? "already" : "full"}`);

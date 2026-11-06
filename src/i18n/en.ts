@@ -131,4 +131,10 @@ export const en: Record<string, string> = {
   "me.paid": "Paid ✓",
   "me.standby": "If the road is full, a community hall opens and is assigned at noon the day before.",
   "me.date_bad": "Please enter the first night (YYYY-MM-DD).",
+  "me.opens_at": "Booking for this night opens {day} {date} at noon. Pilgrims book the next nights as they walk, so beds go to those on the road.",
+  "me.too_far": "Your first night can be booked up to {n} days ahead.",
+  "me.window_rule": "First night: up to {n} days ahead. Other nights: from noon two days before.",
+  "me.not_open": "Booking for that night is not open yet.",
+  "me.cancel": "cancel this night",
+  "me.opens_short": "noon {date}",
 };
