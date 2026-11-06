@@ -6,6 +6,9 @@ export type FreeeConfig = {
   incomeTax: string; // 例: 課税売上10%
   wageAccount: string; // 例: 給料賃金
   wageTax: string; // 例: 対象外
+  donationAccount: string; // 例: 寄付金（1泊500円を町へ。D-20）
+  donationTax: string; // 例: 対象外
+  donationPartner: string; // 例: 自治体
   cashAccount: string; // 決済口座（freee に登録した口座名）例: 現金
 };
 
@@ -14,6 +17,9 @@ export const DEFAULT_FREEE_CONFIG: FreeeConfig = {
   incomeTax: "課税売上10%",
   wageAccount: "給料賃金",
   wageTax: "対象外",
+  donationAccount: "寄付金",
+  donationTax: "対象外",
+  donationPartner: "自治体（町への寄付）",
   cashAccount: "現金",
 };
 
@@ -62,15 +68,16 @@ export function toFreeeCsv(rows: FreeeRow[]): string {
   return "﻿" + lines.join("\r\n") + "\r\n"; // BOM 付き UTF-8（Excel と freee の両方で読める）
 }
 
-// 収入：1泊1行。支出：要員ごとに月1行（給与）。
+// 収入：1泊1行。支出：要員ごとに月1行（給与）と、町への寄付を月1行（未決済。帳簿の「お財布に残る」と一致させる）。
 export function buildFreeeRows(
   month: string,
-  paid: { date: string; price: number; paid_at: string; guest_name: string; house_label: string; booking_id: string }[],
+  paid: { date: string; price: number; donation?: number; paid_at: string; guest_name: string; house_label: string; booking_id: string }[],
   payroll: { staff: { id: string; name: string }; days: number; amount: number }[],
   cfg: FreeeConfig = DEFAULT_FREEE_CONFIG,
 ): FreeeRow[] {
   const rows: FreeeRow[] = [];
-  for (const p of paid.filter((x) => x.date.startsWith(month))) {
+  const inMonth = paid.filter((x) => x.date.startsWith(month));
+  for (const p of inMonth) {
     rows.push({
       kind: "収入", ref: p.booking_id, date: p.date, partner: p.guest_name, account: cfg.incomeAccount, tax: cfg.incomeTax,
       amount: p.price, memo: `宿泊料 ${p.house_label} ${p.date}`, item: "宿泊料", settledOn: p.paid_at.slice(0, 10), settleAccount: cfg.cashAccount,
@@ -81,6 +88,13 @@ export function buildFreeeRows(
     rows.push({
       kind: "支出", ref: `wage-${month}-${l.staff.id}`, date: lastDay, partner: l.staff.name, account: cfg.wageAccount, tax: cfg.wageTax,
       amount: l.amount, memo: `${month} 当番 ${l.days}日`, item: "日当", settledOn: lastDay, settleAccount: cfg.cashAccount,
+    });
+  }
+  const donation = inMonth.reduce((a, p) => a + (p.donation ?? 0), 0);
+  if (donation > 0) {
+    rows.push({
+      kind: "支出", ref: `donation-${month}`, date: lastDay, partner: cfg.donationPartner, account: cfg.donationAccount, tax: cfg.donationTax,
+      amount: donation, memo: `${month} 宿泊 ${inMonth.length}泊分（1泊500円）`, item: "町への寄付",
     });
   }
   return rows;

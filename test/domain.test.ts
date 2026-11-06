@@ -59,10 +59,10 @@ describe("給与と帳簿（D-22, D-15）", () => {
 });
 
 describe("freee 取引インポート CSV（D-23）", () => {
-  it("ヘッダーは freee の列順で、収入は1泊1行、給与は要員ごとに1行", () => {
+  it("ヘッダーは freee の列順で、収入は1泊1行、給与は要員ごとに1行、寄付は月1行", () => {
     const rows = buildFreeeRows(
       "2026-11",
-      [{ date: "2026-11-09", price: 5000, paid_at: "2026-11-09T18:00:00+09:00", guest_name: "Winston Churchill", house_label: "Kaizuka #1", booking_id: "bk_1" }],
+      [{ date: "2026-11-09", price: 5000, donation: 500, paid_at: "2026-11-09T18:00:00+09:00", guest_name: "Winston Churchill", house_label: "Kaizuka #1", booking_id: "bk_1" }],
       [{ staff: { id: "s-a", name: "樋口一葉" }, days: 2, amount: 6000 }],
     );
     const csv = toFreeeCsv(rows);
@@ -72,7 +72,9 @@ describe("freee 取引インポート CSV（D-23）", () => {
     expect(lines[1]).toContain("収入,bk_1,2026/11/09,,,Winston Churchill,売上高,課税売上10%,5000");
     expect(lines[1]).toContain(",2026/11/09,現金,5000");
     expect(lines[2]).toContain("支出,wage-2026-11-s-a,2026/11/30,,,樋口一葉,給料賃金,対象外,6000");
-    expect(lines).toHaveLength(3);
+    expect(lines[3]).toContain("支出,donation-2026-11,2026/11/30,,,自治体（町への寄付）,寄付金,対象外,500");
+    expect(lines[3].endsWith(",,,")).toBe(true); // 寄付は未決済（決済日・口座・金額が空）
+    expect(lines).toHaveLength(4);
   });
   it("カンマや引用符を含む値は引用する", () => {
     const csv = toFreeeCsv([{ kind: "収入", ref: "x", date: "2026-11-01", partner: 'A, "B"', account: "売上高", tax: "課税売上10%", amount: 1, memo: "" }]);
