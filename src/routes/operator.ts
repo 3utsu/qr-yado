@@ -240,15 +240,23 @@ op.post("/op/:operatorId/freee", async (c) => {
   return c.redirect(`/op/${c.req.param("operatorId")}?month=${String(f.month ?? "")}#ledger`);
 });
 
-// 保存 → Claude で7言語に翻訳（並列、10秒ほど）。失敗した言語はチェックイン時にもう一度試す（guideFor）
+// 保存 → 文面が変わったときだけ Claude で翻訳する（並列、10秒ほど）。変わっていなければ API は呼ばない。
+// 訳が欠けている言語だけは補う。失敗した言語はチェックイン時にもう一度試す（guideFor）
 op.post("/op/:operatorId/house/:houseId/guide", async (c) => {
   const db = new Db(c.env.DB);
   const f = await c.req.parseBody();
   const houseId = c.req.param("houseId");
-  await db.updateHouseGuide(houseId, String(f.guide_ja ?? "").slice(0, 4000), String(f.rules_ja ?? "").slice(0, 4000));
-  const house = await db.house(houseId);
-  if (!house) return c.notFound();
-  const results = await translateGuidesForHouse(c.env, db, house, LANGS.map((l) => l.code));
+  const before = await db.house(houseId);
+  if (!before) return c.notFound();
+  const guideJa = String(f.guide_ja ?? "").slice(0, 4000);
+  const rulesJa = String(f.rules_ja ?? "").slice(0, 4000);
+  const changed = guideJa !== (before.guide_ja ?? "") || rulesJa !== (before.rules_ja ?? "");
+  if (changed) await db.updateHouseGuide(houseId, guideJa, rulesJa); // 訳のキャッシュも消える
+  const house = changed ? (await db.house(houseId))! : before;
+  const cached = new Set((await db.houseGuides(houseId)).map((g) => g.lang));
+  const todo = LANGS.map((l) => l.code).filter((l) => l !== "ja" && !cached.has(l));
+  if (todo.length === 0) return c.redirect(`/op/${c.req.param("operatorId")}?translated=${encodeURIComponent("0（文面が変わっていないので翻訳はしません）")}#houses`);
+  const results = await translateGuidesForHouse(c.env, db, house, todo);
   const ok = results.filter((r) => r.ok).map((r) => r.lang).join("・");
   const ng = results.filter((r) => !r.ok).map((r) => `${r.lang}: ${r.error ?? ""}`).join(" / ");
   return c.redirect(`/op/${c.req.param("operatorId")}?translated=${encodeURIComponent(ok || "0")}${ng ? `&tr_err=${encodeURIComponent(ng.slice(0, 300))}` : ""}#houses`);
