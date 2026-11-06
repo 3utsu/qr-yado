@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { canAcceptNight, pickDuty } from "../src/domain/duty";
 import { monthlyPayroll } from "../src/domain/payroll";
 import { monthlyLedger } from "../src/domain/ledger";
-import { buildFreeeRows, FREEE_HEADERS, toFreeeCsv } from "../src/domain/freee";
+import { buildFreeeRows, FREEE_HEADERS, FREEE_REF_MAX, freeeConfigFrom, toFreeeCsv } from "../src/domain/freee";
 import { buildTd3, mrzCheckDigit, verifyTd3 } from "../src/domain/mrz";
 import { firstKana, isKatakanaName } from "../src/domain/kana";
 import { canAddNight, cap180Status } from "../src/domain/cap180";
@@ -71,10 +71,24 @@ describe("freee 取引インポート CSV（D-23）", () => {
     expect(lines[0].split(",")[0]).toBe("収支区分");
     expect(lines[1]).toContain("収入,bk_1,2026/11/09,,,Winston Churchill,売上高,課税売上10%,5000");
     expect(lines[1]).toContain(",2026/11/09,現金,5000");
-    expect(lines[2]).toContain("支出,wage-2026-11-s-a,2026/11/30,,,樋口一葉,給料賃金,対象外,6000");
-    expect(lines[3]).toContain("支出,donation-2026-11,2026/11/30,,,自治体（町への寄付）,寄付金,対象外,500");
+    expect(lines[2]).toContain("支出,W2611-s-a,2026/11/30,,,樋口一葉,給料賃金,対象外,6000");
+    expect(lines[3]).toContain("支出,D2611-town,2026/11/30,,,町（宿泊者からの寄付の預かり）,預り金,対象外,500");
     expect(lines[3].endsWith(",,,")).toBe(true); // 寄付は未決済（決済日・口座・金額が空）
     expect(lines).toHaveLength(4);
+  });
+  it("管理番号は freee の上限 20 文字に収める（要員 id が長くても）", () => {
+    const rows = buildFreeeRows("2026-10", [], [{ staff: { id: "s_abcdefghijkl", name: "x" }, days: 1, amount: 3000 }]);
+    expect(rows[0].ref).toBe("W2610-s_abcdefghijkl");
+    expect(rows[0].ref.length).toBeLessThanOrEqual(FREEE_REF_MAX);
+    const long = buildFreeeRows("2026-10", [], [{ staff: { id: "s-hiratsuka-raicho", name: "x" }, days: 1, amount: 3000 }]);
+    expect(long[0].ref.length).toBe(FREEE_REF_MAX);
+  });
+  it("勘定科目の設定は JSON で上書きでき、空や壊れた JSON は既定値になる", () => {
+    expect(freeeConfigFrom(null).wageAccount).toBe("給料賃金");
+    expect(freeeConfigFrom("{bad").wageAccount).toBe("給料賃金");
+    const c = freeeConfigFrom(JSON.stringify({ wageAccount: " 給料手当 ", donationAccount: "" }));
+    expect(c.wageAccount).toBe("給料手当");
+    expect(c.donationAccount).toBe("預り金");
   });
   it("カンマや引用符を含む値は引用する", () => {
     const csv = toFreeeCsv([{ kind: "収入", ref: "x", date: "2026-11-01", partner: 'A, "B"', account: "売上高", tax: "課税売上10%", amount: 1, memo: "" }]);

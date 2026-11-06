@@ -7,7 +7,7 @@ import { html, page, topbar, yen, type Html } from "../lib/html";
 import { addDays, datesOfMonth, formatJaShort, monthOf, todayJst, weekday, WEEKDAY_JA, minpakuYearOf } from "../lib/dates";
 import { monthlyPayroll } from "../domain/payroll";
 import { monthlyLedger } from "../domain/ledger";
-import { buildFreeeRows, toFreeeCsv } from "../domain/freee";
+import { buildFreeeRows, FREEE_CONFIG_LABELS, freeeConfigFrom, toFreeeCsv, type FreeeConfig } from "../domain/freee";
 import { cap180Status } from "../domain/cap180";
 import { periodicReport, reportPeriodFor } from "../domain/report";
 import { enqueueLedgerPrint, enqueueSchedulePrint, recomputeDuties } from "../services";
@@ -50,6 +50,7 @@ op.get("/op/:operatorId", async (c) => {
   for (const s of sched) if (s.available) availByDate[s.date] = (availByDate[s.date] ?? 0) + 1;
   const payroll = monthlyPayroll(duties, staff, month);
   const ledger = monthlyLedger(month, paid, payroll.total);
+  const freee = freeeConfigFrom(operator.freee_config);
   const period = reportPeriodFor(today);
   const stays = await db.staysOfOperator(operator.id, period.from, period.to);
   const report = periodicReport(stays, period.from, period.to);
@@ -102,7 +103,12 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
     </div>
     <table class="t"><thead><tr><th>日当の内訳</th><th class="r">当番</th><th class="r">日当</th><th class="r">金額</th></tr></thead><tbody>${payroll.lines.map((l) => html`<tr><td>${l.staff.name}</td><td class="r">${l.days}日</td><td class="r">${yen(l.staff.daily_wage)}円</td><td class="r" style="font-weight:700">${yen(l.amount)}円</td></tr>`)}</tbody></table>
     <div class="row"><a class="btn sm" href="/op/${operator.id}/freee.csv?month=${month}" download="qr-yado-${month}.csv">freee 取引インポート用 CSV をダウンロード</a><form method="post" action="/op/${operator.id}/print/ledger"><input type="hidden" name="month" value="${month}"><button class="btn sm line" type="submit">帳簿を紙で印刷（商工会へ）</button></form></div>
-    <div class="mute">CSV の列：収支区分・発生日・取引先・勘定科目・税区分・金額・備考・決済日・決済口座（現金）・決済金額。勘定科目と税区分は設定で変えられます（D-23）。</div>
+    <div class="mute">CSV の列：収支区分・管理番号・発生日・取引先・勘定科目・税区分・金額・備考・品目・決済日・決済口座・決済金額（freee標準形式、D-23）。収入は1泊1行、日当は要員ごとに月1行、町への寄付は月1行（未決済）。</div>
+    <details><summary class="mute" style="cursor:pointer">freee の勘定科目・税区分・口座を合わせる（freee に無い名前だとインポートで止まります）</summary>
+    <form method="post" action="/op/${operator.id}/freee" class="grid2" style="margin-top:8px"><input type="hidden" name="month" value="${month}">
+      ${(Object.keys(FREEE_CONFIG_LABELS) as (keyof FreeeConfig)[]).map((k) => html`<label style="display:flex;flex-direction:column;gap:4px;font-size:13px">${FREEE_CONFIG_LABELS[k]}<input name="${k}" value="${freee[k]}" style="padding:8px;border:1px solid #E3DDCF;border-radius:8px;font-size:15px"></label>`)}
+      <div style="grid-column:1/-1" class="row"><button class="btn sm" type="submit">保存</button><span class="mute">個人事業主の freee は「給料賃金」、法人は「給料手当」などプランで名前が違います。freee の［設定］→［勘定科目の設定］の名前をそのまま入れてください。</span></div>
+    </form></details>
   </section>
 
   <section id="report" class="card">
@@ -190,8 +196,18 @@ op.get("/op/:operatorId/freee.csv", async (c) => {
   if (!/^\d{4}-\d{2}$/.test(month)) return c.text("month", 400);
   const [paid, staff, duties] = await Promise.all([db.paidOfOperator(operatorId, month), db.staffOf(operatorId), db.dutiesOfOperator(operatorId, month)]);
   const payroll = monthlyPayroll(duties, staff, month);
-  const csv = toFreeeCsv(buildFreeeRows(month, paid, payroll.lines));
+  const operator = await db.operator(operatorId);
+  const csv = toFreeeCsv(buildFreeeRows(month, paid, payroll.lines, freeeConfigFrom(operator?.freee_config)));
   return new Response(csv, { headers: { "content-type": "text/csv; charset=utf-8", "content-disposition": `attachment; filename="qr-yado-${month}.csv"` } });
+});
+
+op.post("/op/:operatorId/freee", async (c) => {
+  const db = new Db(c.env.DB);
+  const f = await c.req.parseBody();
+  const o: Record<string, string> = {};
+  for (const k of Object.keys(FREEE_CONFIG_LABELS)) o[k] = String(f[k] ?? "").trim().slice(0, 60);
+  await db.updateOperatorFreee(c.req.param("operatorId"), JSON.stringify(o));
+  return c.redirect(`/op/${c.req.param("operatorId")}?month=${String(f.month ?? "")}#ledger`);
 });
 
 op.post("/op/:operatorId/house/:houseId/guide", async (c) => {

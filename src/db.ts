@@ -1,7 +1,7 @@
 // D1 へのアクセス。SQL はここに集める。計算はしない（domain/ で行う）。
 import { nowJstIso } from "./lib/dates";
 
-export type Operator = { id: string; name: string; kind: string };
+export type Operator = { id: string; name: string; kind: string; freee_config?: string | null };
 export type House = {
   id: string; operator_id: string; municipality_code: string; community: string; seq: number; label: string;
   lat: number | null; lng: number | null; section_id: number | null; capacity: number; price: number; donation: number; status: string;
@@ -38,6 +38,9 @@ export class Db {
   }
   async house(id: string): Promise<House | null> {
     return (await this.d1.prepare("SELECT * FROM houses WHERE id=?").bind(id).first<House>()) ?? null;
+  }
+  async updateOperatorFreee(id: string, json: string) {
+    await this.d1.prepare("UPDATE operators SET freee_config=? WHERE id=?").bind(json, id).run();
   }
   async updateHouseGuide(id: string, guideJa: string, rulesJa: string) {
     await this.d1.prepare("UPDATE houses SET guide_ja=?, rules_ja=? WHERE id=?").bind(guideJa, rulesJa, id).run();

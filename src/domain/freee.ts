@@ -12,16 +12,51 @@ export type FreeeConfig = {
   cashAccount: string; // 決済口座（freee に登録した口座名）例: 現金
 };
 
+// 既定値。freee に無い名前はインポートで止まるので、事業主の画面で freee の勘定科目一覧に合わせて直せる。
+// 町への寄付は帳簿どおり「預かり」として出す（経費か預り金かの扱いは商工会・税理士の判断。設定で変えられる）
 export const DEFAULT_FREEE_CONFIG: FreeeConfig = {
   incomeAccount: "売上高",
   incomeTax: "課税売上10%",
   wageAccount: "給料賃金",
   wageTax: "対象外",
-  donationAccount: "寄付金",
+  donationAccount: "預り金",
   donationTax: "対象外",
-  donationPartner: "自治体（町への寄付）",
+  donationPartner: "町（宿泊者からの寄付の預かり）",
   cashAccount: "現金",
 };
+
+export const FREEE_CONFIG_LABELS: Record<keyof FreeeConfig, string> = {
+  incomeAccount: "宿泊料の勘定科目",
+  incomeTax: "宿泊料の税区分",
+  wageAccount: "日当の勘定科目",
+  wageTax: "日当の税区分",
+  donationAccount: "町への寄付の勘定科目",
+  donationTax: "町への寄付の税区分",
+  donationPartner: "町への寄付の取引先",
+  cashAccount: "決済口座（freee に登録した口座名）",
+};
+
+// 保存された JSON（部分でも可）と既定値を合わせる
+export function freeeConfigFrom(json: string | null | undefined): FreeeConfig {
+  let o: Partial<FreeeConfig> = {};
+  try {
+    if (json) o = JSON.parse(json);
+  } catch {
+    o = {};
+  }
+  const cfg = { ...DEFAULT_FREEE_CONFIG };
+  for (const k of Object.keys(cfg) as (keyof FreeeConfig)[]) {
+    const v = o[k];
+    if (typeof v === "string" && v.trim()) cfg[k] = v.trim();
+  }
+  return cfg;
+}
+
+// freee の管理番号は20文字まで
+export const FREEE_REF_MAX = 20;
+export function freeeRef(s: string): string {
+  return s.slice(0, FREEE_REF_MAX);
+}
 
 export const FREEE_HEADERS = [
   "収支区分", "管理番号", "発生日", "決済期日", "取引先コード", "取引先", "勘定科目", "税区分", "金額",
@@ -79,22 +114,23 @@ export function buildFreeeRows(
   const inMonth = paid.filter((x) => x.date.startsWith(month));
   for (const p of inMonth) {
     rows.push({
-      kind: "収入", ref: p.booking_id, date: p.date, partner: p.guest_name, account: cfg.incomeAccount, tax: cfg.incomeTax,
+      kind: "収入", ref: freeeRef(p.booking_id), date: p.date, partner: p.guest_name, account: cfg.incomeAccount, tax: cfg.incomeTax,
       amount: p.price, memo: `宿泊料 ${p.house_label} ${p.date}`, item: "宿泊料", settledOn: p.paid_at.slice(0, 10), settleAccount: cfg.cashAccount,
     });
   }
   const lastDay = `${month}-${String(new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate()).padStart(2, "0")}`;
+  const yymm = month.slice(2, 4) + month.slice(5, 7); // 2026-10 → 2610
   for (const l of payroll) {
     rows.push({
-      kind: "支出", ref: `wage-${month}-${l.staff.id}`, date: lastDay, partner: l.staff.name, account: cfg.wageAccount, tax: cfg.wageTax,
+      kind: "支出", ref: freeeRef(`W${yymm}-${l.staff.id}`), date: lastDay, partner: l.staff.name, account: cfg.wageAccount, tax: cfg.wageTax,
       amount: l.amount, memo: `${month} 当番 ${l.days}日`, item: "日当", settledOn: lastDay, settleAccount: cfg.cashAccount,
     });
   }
   const donation = inMonth.reduce((a, p) => a + (p.donation ?? 0), 0);
   if (donation > 0) {
     rows.push({
-      kind: "支出", ref: `donation-${month}`, date: lastDay, partner: cfg.donationPartner, account: cfg.donationAccount, tax: cfg.donationTax,
-      amount: donation, memo: `${month} 宿泊 ${inMonth.length}泊分（1泊500円）`, item: "町への寄付",
+      kind: "支出", ref: `D${yymm}-town`, date: lastDay, partner: cfg.donationPartner, account: cfg.donationAccount, tax: cfg.donationTax,
+      amount: donation, memo: `${month} 町への寄付の預かり ${inMonth.length}泊分`, item: "町への寄付",
     });
   }
   return rows;
