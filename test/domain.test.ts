@@ -59,7 +59,7 @@ describe("給与と帳簿（D-22, D-15）", () => {
 });
 
 describe("freee 取引インポート CSV（D-23）", () => {
-  it("ヘッダーは freee の列順で、収入は1泊1行、給与は要員ごとに1行、寄付は月1行", () => {
+  it("ヘッダーは freee の列順で、1泊は 売上高＋預り金 の2行、給与は要員ごとに1行", () => {
     const rows = buildFreeeRows(
       "2026-11",
       [{ date: "2026-11-09", price: 5000, donation: 500, paid_at: "2026-11-09T18:00:00+09:00", guest_name: "Winston Churchill", house_label: "Kaizuka #1", booking_id: "bk_1" }],
@@ -71,14 +71,18 @@ describe("freee 取引インポート CSV（D-23）", () => {
     expect(lines[0].split(",")[0]).toBe("収支区分");
     expect(lines[0]).not.toContain("セグメント"); // 使わない任意の列は出さない
     expect(lines[1].split(",")).toHaveLength(FREEE_HEADERS.length);
-    expect(lines[1]).toContain("収入,bk_1,2026/11/09,,Winston Churchill,売上高,課税売上10%,5000");
-    expect(lines[1]).toContain(",2026/11/09,現金,5000");
-    expect(lines[2]).toContain("支出,W2611-s-a,2026/11/30,,樋口一葉,給料賃金,対象外,6000");
-    expect(lines[3]).toContain("支出,D2611-town,2026/11/30,,町（宿泊者からの寄付の預かり）,預り金,対象外,500");
-    expect(lines[3].endsWith(",,,")).toBe(true); // 寄付は未決済（決済日・口座・金額が空）
+    expect(lines[1]).toContain("収入,bk_1,2026/11/09,,Winston Churchill,売上高,課税売上10%,4500");
+    expect(lines[1]).toContain(",2026/11/09,現金,4500");
+    expect(lines[2]).toContain("収入,bk_1-d,2026/11/09,,Winston Churchill,預り金,対象外,500");
+    expect(lines[2]).toContain(",2026/11/09,現金,500"); // 預かりも現金で受け取っている
+    expect(lines[3]).toContain("支出,W2611-s-a,2026/11/30,,樋口一葉,給料賃金,対象外,6000");
     expect(lines).toHaveLength(4);
+    // 収入の合計は宿泊者が払った 5,000 円
+    expect(rows.filter((r) => r.kind === "収入").reduce((a, r) => a + r.amount, 0)).toBe(5000);
   });
-  it("管理番号は freee の上限 20 文字に収める（要員 id が長くても）", () => {
+  it("管理番号は freee の上限 20 文字に収める（要員 id が長くても、預かりの行も）", () => {
+    const paid = buildFreeeRows("2026-10", [{ date: "2026-10-01", price: 5000, donation: 500, paid_at: "2026-10-01", guest_name: "g", house_label: "h", booking_id: "bk_abcdefghijkl" }], []);
+    expect(paid.map((r) => r.ref)).toEqual(["bk_abcdefghijkl", "bk_abcdefghijkl-d"]);
     const rows = buildFreeeRows("2026-10", [], [{ staff: { id: "s_abcdefghijkl", name: "x" }, days: 1, amount: 3000 }]);
     expect(rows[0].ref).toBe("W2610-s_abcdefghijkl");
     expect(rows[0].ref.length).toBeLessThanOrEqual(FREEE_REF_MAX);

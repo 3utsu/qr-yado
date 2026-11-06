@@ -103,7 +103,7 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
     </div>
     <table class="t"><thead><tr><th>日当の内訳</th><th class="r">当番</th><th class="r">日当</th><th class="r">金額</th></tr></thead><tbody>${payroll.lines.map((l) => html`<tr><td>${l.staff.name}</td><td class="r">${l.days}日</td><td class="r">${yen(l.staff.daily_wage)}円</td><td class="r" style="font-weight:700">${yen(l.amount)}円</td></tr>`)}</tbody></table>
     <div class="row"><a class="btn sm" href="/op/${operator.id}/freee.csv?month=${month}" download="qr-yado-${month}.csv">freee 取引インポート用 CSV をダウンロード</a><form method="post" action="/op/${operator.id}/print/ledger"><input type="hidden" name="month" value="${month}"><button class="btn sm line" type="submit">帳簿を紙で印刷（商工会へ）</button></form></div>
-    <div class="mute">CSV の列：収支区分・管理番号・発生日・決済期日・取引先・勘定科目・税区分・金額・税計算区分・税額・備考・品目・決済日・決済口座・決済金額（freee標準形式、D-23。使わない任意の列は出しません）。収入は1泊1行、日当は要員ごとに月1行、町への寄付は月1行（未決済）。</div>
+    <div class="mute">CSV の列：収支区分・管理番号・発生日・決済期日・取引先・勘定科目・税区分・金額・税計算区分・税額・備考・品目・決済日・決済口座・決済金額（freee標準形式、D-23。使わない任意の列は出しません）。1泊は「売上高 4,500円」と「預り金 500円（町への寄付の預かり）」の2行の収入、日当は要員ごとに月1行。町へ渡したときの支出は渡したときに。</div>
     <details><summary class="mute" style="cursor:pointer">freee の勘定科目・税区分・口座を合わせる（freee に無い名前だとインポートで止まります）</summary>
     <form method="post" action="/op/${operator.id}/freee" class="grid2" style="margin-top:8px"><input type="hidden" name="month" value="${month}">
       ${(Object.keys(FREEE_CONFIG_LABELS) as (keyof FreeeConfig)[]).map((k) => html`<label style="display:flex;flex-direction:column;gap:4px;font-size:13px">${FREEE_CONFIG_LABELS[k]}<input name="${k}" value="${freee[k]}" style="padding:8px;border:1px solid #E3DDCF;border-radius:8px;font-size:15px"></label>`)}

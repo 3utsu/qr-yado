@@ -6,14 +6,13 @@ export type FreeeConfig = {
   incomeTax: string; // 例: 課税売上10%
   wageAccount: string; // 例: 給料賃金
   wageTax: string; // 例: 対象外
-  donationAccount: string; // 例: 寄付金（1泊500円を町へ。D-20）
+  donationAccount: string; // 例: 預り金（1泊500円は町のもの。D-20）
   donationTax: string; // 例: 対象外
-  donationPartner: string; // 例: 自治体
   cashAccount: string; // 決済口座（freee に登録した口座名）例: 現金
 };
 
 // 既定値。freee に無い名前はインポートで止まるので、事業主の画面で freee の勘定科目一覧に合わせて直せる。
-// 町への寄付は帳簿どおり「預かり」として出す（経費か預り金かの扱いは商工会・税理士の判断。設定で変えられる）
+// 町への寄付（1泊500円）は帳簿どおり「預かり」：1泊を 売上高 4,500円 ＋ 預り金 500円 の2行の収入にする（D-23）
 export const DEFAULT_FREEE_CONFIG: FreeeConfig = {
   incomeAccount: "売上高",
   incomeTax: "課税売上10%",
@@ -21,7 +20,6 @@ export const DEFAULT_FREEE_CONFIG: FreeeConfig = {
   wageTax: "対象外",
   donationAccount: "預り金",
   donationTax: "対象外",
-  donationPartner: "町（宿泊者からの寄付の預かり）",
   cashAccount: "現金",
 };
 
@@ -30,9 +28,8 @@ export const FREEE_CONFIG_LABELS: Record<keyof FreeeConfig, string> = {
   incomeTax: "宿泊料の税区分",
   wageAccount: "日当の勘定科目",
   wageTax: "日当の税区分",
-  donationAccount: "町への寄付の勘定科目",
-  donationTax: "町への寄付の税区分",
-  donationPartner: "町への寄付の取引先",
+  donationAccount: "町への寄付（預かり）の勘定科目",
+  donationTax: "町への寄付（預かり）の税区分",
   cashAccount: "決済口座（freee に登録した口座名）",
 };
 
@@ -105,7 +102,8 @@ export function toFreeeCsv(rows: FreeeRow[]): string {
   return "﻿" + lines.join("\r\n") + "\r\n"; // BOM 付き UTF-8（Excel と freee の両方で読める）
 }
 
-// 収入：1泊1行。支出：要員ごとに月1行（給与）と、町への寄付を月1行（未決済。帳簿の「お財布に残る」と一致させる）。
+// 収入：1泊につき 宿泊料（price − donation）1行 ＋ 町への寄付の預かり（donation）1行。支出：要員ごとに月1行（給与）。
+// 町へ渡すときの「支出・預り金・決済済み」は実際に渡したときに切る（このCSVには入れない）。
 export function buildFreeeRows(
   month: string,
   paid: { date: string; price: number; donation?: number; paid_at: string; guest_name: string; house_label: string; booking_id: string }[],
@@ -115,10 +113,16 @@ export function buildFreeeRows(
   const rows: FreeeRow[] = [];
   const inMonth = paid.filter((x) => x.date.startsWith(month));
   for (const p of inMonth) {
+    const donation = p.donation ?? 0;
     rows.push({
       kind: "収入", ref: freeeRef(p.booking_id), date: p.date, partner: p.guest_name, account: cfg.incomeAccount, tax: cfg.incomeTax,
-      amount: p.price, memo: `宿泊料 ${p.house_label} ${p.date}`, item: "宿泊料", settledOn: p.paid_at.slice(0, 10), settleAccount: cfg.cashAccount,
+      amount: p.price - donation, memo: `宿泊料 ${p.house_label} ${p.date}`, item: "宿泊料", settledOn: p.paid_at.slice(0, 10), settleAccount: cfg.cashAccount,
     });
+    if (donation > 0)
+      rows.push({
+        kind: "収入", ref: freeeRef(`${p.booking_id}-d`), date: p.date, partner: p.guest_name, account: cfg.donationAccount, tax: cfg.donationTax,
+        amount: donation, memo: `町への寄付（預かり） ${p.house_label} ${p.date}`, item: "町への寄付", settledOn: p.paid_at.slice(0, 10), settleAccount: cfg.cashAccount,
+      });
   }
   const lastDay = `${month}-${String(new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 0)).getUTCDate()).padStart(2, "0")}`;
   const yymm = month.slice(2, 4) + month.slice(5, 7); // 2026-10 → 2610
@@ -126,13 +130,6 @@ export function buildFreeeRows(
     rows.push({
       kind: "支出", ref: freeeRef(`W${yymm}-${l.staff.id}`), date: lastDay, partner: l.staff.name, account: cfg.wageAccount, tax: cfg.wageTax,
       amount: l.amount, memo: `${month} 当番 ${l.days}日`, item: "日当", settledOn: lastDay, settleAccount: cfg.cashAccount,
-    });
-  }
-  const donation = inMonth.reduce((a, p) => a + (p.donation ?? 0), 0);
-  if (donation > 0) {
-    rows.push({
-      kind: "支出", ref: `D${yymm}-town`, date: lastDay, partner: cfg.donationPartner, account: cfg.donationAccount, tax: cfg.donationTax,
-      amount: donation, memo: `${month} 町への寄付の預かり ${inMonth.length}泊分`, item: "町への寄付",
     });
   }
   return rows;
