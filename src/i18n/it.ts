@@ -134,4 +134,9 @@ export const it: Partial<Dict> = {
   "me.opens_short": "{date} mezzogiorno",
   "checkin.specimen": "Niente passaporto a portata di mano? Prova il passaporto campione (demo)",
   "checkin.photo_too_big": "La foto è troppo grande o in un formato non supportato. Riprova (JPEG, meno di 5 MB).",
+  "checkin.on_file_title": "Il tuo passaporto è registrato",
+  "checkin.on_file_hint": "Una casa precedente sul cammino l'ha letto. Controlla i dati e prosegui: stanotte niente foto.",
+  "checkin.use_on_file": "Prosegui con il passaporto registrato →",
+  "checkin.read_again": "Leggere un altro passaporto…",
+  "checkin.on_file_confirm": "Preso dal passaporto letto prima su questo cammino. Correggi ciò che è cambiato.",
 };

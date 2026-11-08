@@ -167,11 +167,20 @@ guest.get("/b/:bookingId/checkin", async (c) => {
   if (!booking) return c.notFound();
   if (booking.status !== "booked") return c.redirect(`/b/${booking.id}/pay?lang=${lang}`);
   const g = (await db.guest(booking.guest_id))!;
+  // 旅券が登録済み（この旅で前の宿が読み取った）なら、撮り直さずに確認へ進める。名簿は夜ごとに作る（D-09）
+  const onFile = !!(g.passport_no && g.passport_image_key);
   const body = html`
 ${topbar(t("checkin.title"))}
 <div class="wrap" style="display:flex;flex-direction:column;gap:14px">
   ${langBar(lang, `/b/${booking.id}/checkin`)}
-  <div><div class="eyebrow">${t("checkin.step", { n: 1 })}</div><h1 class="serif" style="font-size:26px">${t("checkin.take_passport")}</h1><div class="mute">${t("checkin.photo_hint")}</div></div>
+  <div><div class="eyebrow">${t("checkin.step", { n: 1 })}</div><h1 class="serif" style="font-size:26px">${onFile ? t("checkin.on_file_title") : t("checkin.take_passport")}</h1><div class="mute">${onFile ? t("checkin.on_file_hint") : t("checkin.photo_hint")}</div></div>
+  ${onFile
+    ? html`<div class="card" style="background:#1F1B16;color:#F7F4EC;border-color:#1F1B16;gap:10px">
+        <div class="row" style="gap:12px;align-items:center"><img src="/g/${g.id}/photo" alt="" width="44" height="44" style="border-radius:50%;object-fit:cover"><div style="flex:1 1 auto"><div style="font-weight:700;font-size:17px">${g.name}</div><div style="font-size:13px;color:#D9D2C4">${countryJa(g.passport_country ?? g.nationality ?? "")} · ${(g.passport_no ?? "").slice(0, 3)}••••••${g.name_kana ? ` · ${g.name_kana}` : ""}</div></div></div>
+        <a class="btn" href="/b/${booking.id}/checkin/known?lang=${lang}" style="background:#C8401E">${t("checkin.use_on_file")}</a>
+      </div>
+      <details><summary class="mute" style="cursor:pointer">${t("checkin.read_again")}</summary>`
+    : ""}
   <form id="readForm" method="post" action="/b/${booking.id}/checkin/read" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:12px">
     <input type="hidden" name="lang" value="${lang}">
     <label class="f">${t("checkin.take_passport")}<input type="file" name="passport" accept="image/*" capture="environment" required style="font:inherit"></label>
@@ -180,6 +189,7 @@ ${topbar(t("checkin.title"))}
     <div class="mute">${g.name}</div>
   </form>
   <form method="post" action="/b/${booking.id}/checkin/read" style="text-align:center"><input type="hidden" name="lang" value="${lang}"><input type="hidden" name="specimen" value="churchill"><button type="submit" class="mute" style="background:none;border:0;font:inherit;font-size:13px;text-decoration:underline;cursor:pointer">${t("checkin.specimen")}</button></form>
+  ${onFile ? html`</details>` : ""}
   <script>
   // スマホの写真はそのままだと大きい（HEIC・数MB）ので、送る前に縮めて JPEG にする。読み取りが速く、確実になる
   (function(){
@@ -299,6 +309,30 @@ ${topbar(t("checkin.title"))}
   <form method="post" action="/b/${booking.id}/checkin/confirm" style="display:flex;flex-direction:column;gap:10px">
     <input type="hidden" name="lang" value="${lang}">
     ${confirmFields(t, values, mrz)}
+    <button class="btn red" type="submit">${t("checkin.confirm_btn")}</button>
+  </form>
+</div>`;
+  return c.html(page({ title: t("checkin.title"), lang, body }));
+});
+
+// 旅券が登録済みのとき：確認画面（2/3）を記録から埋めて出す。写真は撮らない
+guest.get("/b/:bookingId/checkin/known", async (c) => {
+  const lang = langOf(c);
+  const t = dict(lang);
+  const db = new Db(c.env.DB);
+  const booking = await db.booking(c.req.param("bookingId"));
+  if (!booking) return c.notFound();
+  if (booking.status !== "booked") return c.redirect(`/b/${booking.id}/pay?lang=${lang}`);
+  const g = (await db.guest(booking.guest_id))!;
+  if (!(g.passport_no && g.passport_image_key)) return c.redirect(`/b/${booking.id}/checkin?lang=${lang}`);
+  const values = { name: g.name, kana: g.name_kana ?? "", nationality: g.nationality ?? "", passport_no: g.passport_no, passport_country: g.passport_country ?? g.nationality ?? "", address: g.address ?? "", occupation: g.occupation ?? "", note: "" };
+  const body = html`
+${topbar(t("checkin.title"))}
+<div class="wrap" style="display:flex;flex-direction:column;gap:14px">
+  <div><div class="eyebrow">${t("checkin.step", { n: 2 })}</div><h1 class="serif" style="font-size:26px">${t("checkin.confirm_title")}</h1><div class="mute">${t("checkin.on_file_confirm")}</div></div>
+  <form method="post" action="/b/${booking.id}/checkin/confirm" style="display:flex;flex-direction:column;gap:10px">
+    <input type="hidden" name="lang" value="${lang}">
+    ${confirmFields(t, values, { ok: true })}
     <button class="btn red" type="submit">${t("checkin.confirm_btn")}</button>
   </form>
 </div>`;

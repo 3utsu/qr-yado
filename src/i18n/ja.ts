@@ -139,4 +139,9 @@ export const ja: Partial<Dict> = {
   "me.opens_short": "{date} 正午から",
   "checkin.specimen": "旅券が手元にないときは、見本の旅券で試す（デモ）",
   "checkin.photo_too_big": "写真が大きすぎるか、形式が対応していません。もう一度撮ってください（JPEG・5MB未満）。",
+  "checkin.on_file_title": "旅券は登録済みです",
+  "checkin.on_file_hint": "この旅で前の宿が読み取りました。内容を確かめて進んでください。今夜は撮影は要りません。",
+  "checkin.use_on_file": "登録済みの旅券で進む →",
+  "checkin.read_again": "別の旅券を読み取る…",
+  "checkin.on_file_confirm": "この旅で読み取った旅券の内容です。変わったところがあれば直してください。",
 };

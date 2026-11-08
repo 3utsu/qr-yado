@@ -134,4 +134,9 @@ export const de: Partial<Dict> = {
   "me.opens_short": "{date} 12 Uhr",
   "checkin.specimen": "Kein Pass zur Hand? Mit dem Musterpass testen (Demo)",
   "checkin.photo_too_big": "Das Foto ist zu groß oder das Format wird nicht unterstützt. Bitte erneut aufnehmen (JPEG, unter 5 MB).",
+  "checkin.on_file_title": "Dein Pass ist hinterlegt",
+  "checkin.on_file_hint": "Ein Haus weiter vorn am Weg hat ihn gelesen. Prüfe die Angaben und geh weiter – heute kein Foto nötig.",
+  "checkin.use_on_file": "Mit hinterlegtem Pass weiter →",
+  "checkin.read_again": "Einen anderen Pass lesen…",
+  "checkin.on_file_confirm": "Aus deinem früher auf diesem Weg gelesenen Pass. Korrigiere, was sich geändert hat.",
 };

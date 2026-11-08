@@ -134,4 +134,9 @@ export const pl: Partial<Dict> = {
   "me.opens_short": "{date} południe",
   "checkin.specimen": "Nie masz paszportu pod ręką? Wypróbuj paszport wzorcowy (demo)",
   "checkin.photo_too_big": "Zdjęcie jest za duże lub w nieobsługiwanym formacie. Zrób je ponownie (JPEG, poniżej 5 MB).",
+  "checkin.on_file_title": "Twój paszport jest już zapisany",
+  "checkin.on_file_hint": "Odczytał go wcześniejszy dom na szlaku. Sprawdź dane i przejdź dalej – dziś bez zdjęcia.",
+  "checkin.use_on_file": "Dalej z zapisanym paszportem →",
+  "checkin.read_again": "Odczytaj inny paszport…",
+  "checkin.on_file_confirm": "Z paszportu odczytanego wcześniej na tym szlaku. Popraw, co się zmieniło.",
 };

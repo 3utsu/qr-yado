@@ -139,4 +139,9 @@ export const en: Record<string, string> = {
   "me.opens_short": "noon {date}",
   "checkin.specimen": "No passport at hand? Try the specimen passport (demo)",
   "checkin.photo_too_big": "The photo is too large or in an unsupported format. Please take it again (JPEG, under 5 MB).",
+  "checkin.on_file_title": "Your passport is on file",
+  "checkin.on_file_hint": "A house earlier on your road read it. Check the details and go on — no photo needed tonight.",
+  "checkin.use_on_file": "Use my passport on file →",
+  "checkin.read_again": "Read a different passport…",
+  "checkin.on_file_confirm": "Taken from your passport read earlier on this road. Correct anything that changed.",
 };

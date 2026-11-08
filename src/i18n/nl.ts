@@ -134,4 +134,9 @@ export const nl: Partial<Dict> = {
   "me.opens_short": "{date} 12 uur",
   "checkin.specimen": "Geen paspoort bij de hand? Probeer het voorbeeldpaspoort (demo)",
   "checkin.photo_too_big": "De foto is te groot of het formaat wordt niet ondersteund. Maak hem opnieuw (JPEG, onder 5 MB).",
+  "checkin.on_file_title": "Je paspoort is al bekend",
+  "checkin.on_file_hint": "Een huis eerder op de route heeft het gelezen. Controleer en ga door – vannacht geen foto nodig.",
+  "checkin.use_on_file": "Doorgaan met bekend paspoort →",
+  "checkin.read_again": "Een ander paspoort lezen…",
+  "checkin.on_file_confirm": "Overgenomen van je eerder op deze route gelezen paspoort. Corrigeer wat veranderd is.",
 };
