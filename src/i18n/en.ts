@@ -137,4 +137,6 @@ export const en: Record<string, string> = {
   "me.not_open": "Booking for that night is not open yet.",
   "me.cancel": "cancel this night",
   "me.opens_short": "noon {date}",
+  "checkin.specimen": "No passport at hand? Try the specimen passport (demo)",
+  "checkin.photo_too_big": "The photo is too large or in an unsupported format. Please take it again (JPEG, under 5 MB).",
 };

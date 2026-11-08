@@ -132,4 +132,6 @@ export const nl: Partial<Dict> = {
   "me.not_open": "Boeken voor die nacht is nog niet open.",
   "me.cancel": "deze nacht annuleren",
   "me.opens_short": "{date} 12 uur",
+  "checkin.specimen": "Geen paspoort bij de hand? Probeer het voorbeeldpaspoort (demo)",
+  "checkin.photo_too_big": "De foto is te groot of het formaat wordt niet ondersteund. Maak hem opnieuw (JPEG, onder 5 MB).",
 };

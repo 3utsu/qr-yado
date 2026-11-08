@@ -132,4 +132,6 @@ export const es: Partial<Dict> = {
   "me.not_open": "La reserva de esa noche aún no está abierta.",
   "me.cancel": "cancelar esta noche",
   "me.opens_short": "{date} mediodía",
+  "checkin.specimen": "¿Sin pasaporte a mano? Prueba con el pasaporte de muestra (demo)",
+  "checkin.photo_too_big": "La foto es demasiado grande o el formato no es compatible. Vuelve a hacerla (JPEG, menos de 5 MB).",
 };

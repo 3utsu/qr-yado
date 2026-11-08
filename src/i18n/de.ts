@@ -132,4 +132,6 @@ export const de: Partial<Dict> = {
   "me.not_open": "Die Buchung für diese Nacht ist noch nicht offen.",
   "me.cancel": "diese Nacht stornieren",
   "me.opens_short": "{date} 12 Uhr",
+  "checkin.specimen": "Kein Pass zur Hand? Mit dem Musterpass testen (Demo)",
+  "checkin.photo_too_big": "Das Foto ist zu groß oder das Format wird nicht unterstützt. Bitte erneut aufnehmen (JPEG, unter 5 MB).",
 };

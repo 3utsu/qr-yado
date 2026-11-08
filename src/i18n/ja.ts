@@ -137,4 +137,6 @@ export const ja: Partial<Dict> = {
   "me.not_open": "その夜の予約はまだ開いていません。",
   "me.cancel": "この夜を取り消す",
   "me.opens_short": "{date} 正午から",
+  "checkin.specimen": "旅券が手元にないときは、見本の旅券で試す（デモ）",
+  "checkin.photo_too_big": "写真が大きすぎるか、形式が対応していません。もう一度撮ってください（JPEG・5MB未満）。",
 };

@@ -172,13 +172,33 @@ ${topbar(t("checkin.title"))}
 <div class="wrap" style="display:flex;flex-direction:column;gap:14px">
   ${langBar(lang, `/b/${booking.id}/checkin`)}
   <div><div class="eyebrow">${t("checkin.step", { n: 1 })}</div><h1 class="serif" style="font-size:26px">${t("checkin.take_passport")}</h1><div class="mute">${t("checkin.photo_hint")}</div></div>
-  <form method="post" action="/b/${booking.id}/checkin/read" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:12px">
+  <form id="readForm" method="post" action="/b/${booking.id}/checkin/read" enctype="multipart/form-data" style="display:flex;flex-direction:column;gap:12px">
     <input type="hidden" name="lang" value="${lang}">
     <label class="f">${t("checkin.take_passport")}<input type="file" name="passport" accept="image/*" capture="environment" required style="font:inherit"></label>
     <label class="f">${t("checkin.selfie")}<input type="file" name="selfie" accept="image/*" capture="user" style="font:inherit"></label>
-    <button class="btn red" type="submit">${t("checkin.upload")}</button>
+    <button class="btn red" type="submit" id="readBtn">${t("checkin.upload")}</button>
     <div class="mute">${g.name}</div>
   </form>
+  <form method="post" action="/b/${booking.id}/checkin/read" style="text-align:center"><input type="hidden" name="lang" value="${lang}"><input type="hidden" name="specimen" value="churchill"><button type="submit" class="mute" style="background:none;border:0;font:inherit;font-size:13px;text-decoration:underline;cursor:pointer">${t("checkin.specimen")}</button></form>
+  <script>
+  // スマホの写真はそのままだと大きい（HEIC・数MB）ので、送る前に縮めて JPEG にする。読み取りが速く、確実になる
+  (function(){
+    var form=document.getElementById('readForm'), btn=document.getElementById('readBtn');
+    function shrink(file, max){ return new Promise(function(res){ if(!file||!file.size) return res(null);
+      var img=new Image(); var url=URL.createObjectURL(file);
+      img.onload=function(){ var w=img.naturalWidth,h=img.naturalHeight,sc=Math.min(1,max/Math.max(w,h)); var cv=document.createElement('canvas'); cv.width=Math.round(w*sc); cv.height=Math.round(h*sc); cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height); URL.revokeObjectURL(url); cv.toBlob(function(b){ res(b?new File([b],'photo.jpg',{type:'image/jpeg'}):file); },'image/jpeg',0.86); };
+      img.onerror=function(){ URL.revokeObjectURL(url); res(file); };
+      img.src=url; }); }
+    form.addEventListener('submit', function(ev){ if(form.dataset.ready) return; ev.preventDefault(); btn.disabled=true; btn.textContent='…';
+      var fd=new FormData(); fd.append('lang', form.lang.value);
+      Promise.all([shrink(form.passport.files[0],1800), shrink(form.selfie.files[0],900)]).then(function(r){ if(r[0]) fd.append('passport', r[0]); if(r[1]) fd.append('selfie', r[1]);
+        return fetch(form.action,{method:'POST',body:fd,credentials:'same-origin'}); })
+      .then(function(resp){ return resp.text(); })
+      .then(function(htmlText){ history.replaceState(null,'',form.action); document.open(); document.write(htmlText); document.close(); })
+      .catch(function(){ form.dataset.ready='1'; btn.disabled=false; form.submit(); });
+    });
+  })();
+  </script>
   <details><summary class="mute">${t("checkin.read_failed").split(".")[0]}…</summary>
   <form method="post" action="/b/${booking.id}/checkin/confirm" style="display:flex;flex-direction:column;gap:10px;margin-top:10px">
     <input type="hidden" name="lang" value="${lang}">
@@ -227,12 +247,18 @@ guest.post("/b/:bookingId/checkin/read", async (c) => {
   const f = await c.req.parseBody();
   const lang = pickLang(String(f.lang ?? ""), undefined, undefined);
   const t = dict(lang);
-  const passport = f.passport instanceof File ? f.passport : null;
+  let passport = f.passport instanceof File ? f.passport : null;
   const selfie = f.selfie instanceof File && f.selfie.size > 0 ? f.selfie : null;
+  // デモ用：見本の旅券（Utopia・SPECIMEN、リポジトリの fixtures）で読み取りを試す。本物の旅券は使わない
+  if (!passport && typeof f.specimen === "string" && /^[a-z]+$/.test(f.specimen)) {
+    const r = await fetch(`https://raw.githubusercontent.com/3utsu/qr-yado/main/fixtures/specimen-passport-${f.specimen}.png`);
+    if (r.ok) passport = new File([await r.arrayBuffer()], `specimen-${f.specimen}.png`, { type: "image/png" });
+  }
   let values = { name: g.name, kana: "", nationality: g.nationality ?? "", passport_no: "", passport_country: "", address: g.address ?? "", occupation: g.occupation ?? "", note: g.note ?? "" };
   let mrz: { ok: boolean } | null = null;
   let error: string | null = null;
-  if (passport && passport.size > 0 && passport.size < 8 * 1024 * 1024) {
+  const okType = passport ? /^image\/(jpeg|png|webp|gif)$/.test(passport.type || "image/jpeg") : false;
+  if (passport && passport.size > 0 && passport.size < 5 * 1024 * 1024 && okType) {
     const buf = await passport.arrayBuffer();
     const key = `passports/${g.id}/${newId("img", 8)}`;
     await c.env.BUCKET.put(key, buf, { httpMetadata: { contentType: passport.type || "image/jpeg" } });
@@ -258,7 +284,7 @@ guest.post("/b/:bookingId/checkin/read", async (c) => {
       error = t("checkin.read_failed");
     }
   } else {
-    error = t("checkin.read_failed");
+    error = passport && passport.size > 0 && (!okType || passport.size >= 5 * 1024 * 1024) ? t("checkin.photo_too_big") : t("checkin.read_failed");
   }
   if (selfie && selfie.size < 8 * 1024 * 1024) {
     const key = `photos/${g.id}`;
