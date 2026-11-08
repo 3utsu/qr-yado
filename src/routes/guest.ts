@@ -176,7 +176,7 @@ ${topbar(t("checkin.title"))}
   <div><div class="eyebrow">${t("checkin.step", { n: 1 })}</div><h1 class="serif" style="font-size:26px">${onFile ? t("checkin.on_file_title") : t("checkin.take_passport")}</h1><div class="mute">${onFile ? t("checkin.on_file_hint") : t("checkin.photo_hint")}</div></div>
   ${onFile
     ? html`<div class="card" style="background:#1F1B16;color:#F7F4EC;border-color:#1F1B16;gap:10px">
-        <div class="row" style="gap:12px;align-items:center"><img src="/g/${g.id}/photo" alt="" width="44" height="44" style="border-radius:50%;object-fit:cover"><div style="flex:1 1 auto"><div style="font-weight:700;font-size:17px">${g.name}</div><div style="font-size:13px;color:#D9D2C4">${countryJa(g.passport_country ?? g.nationality ?? "")} · ${(g.passport_no ?? "").slice(0, 3)}••••••${g.name_kana ? ` · ${g.name_kana}` : ""}</div></div></div>
+        <div class="row" style="gap:12px;align-items:center"><img src="/g/${g.id}/photo" alt="" width="44" height="44" style="border-radius:50%;object-fit:cover"><div style="flex:1 1 auto"><div style="font-weight:700;font-size:17px">${g.name}</div><div style="font-size:13px;color:#D9D2C4">${lang === "ja" ? countryJa(g.passport_country ?? g.nationality ?? "") : (g.passport_country ?? g.nationality ?? "")} · ${(g.passport_no ?? "").slice(0, 3)}••••••${g.name_kana ? ` · ${g.name_kana}` : ""}</div></div></div>
         <a class="btn" href="/b/${booking.id}/checkin/known?lang=${lang}" style="background:#C8401E">${t("checkin.use_on_file")}</a>
       </div>
       <details><summary class="mute" style="cursor:pointer">${t("checkin.read_again")}</summary>`
