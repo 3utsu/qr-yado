@@ -137,9 +137,10 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
   <section id="register" class="card">
     <h2 style="font-size:20px">宿泊者名簿（${y}年${m}月）</h2>
     <div class="mute">法定の名簿は電子で作成・保存（3年）。旅券番号はここだけに出し、紙には載せません（D-07, D-11）。</div>
-    <div class="scroll"><table class="t"><thead><tr><th>宿泊日</th><th>宿</th><th>氏名</th><th>住所</th><th>職業</th><th>国籍</th><th>旅券番号</th><th>チェックイン</th><th>同意</th></tr></thead><tbody>${register.map(
-      (r) => html`<tr><td>${formatJaShort(r.date)}</td><td>${r.house_label}</td><td>${r.name}</td><td>${r.address ?? ""}</td><td>${r.occupation ?? ""}</td><td>${r.nationality ?? ""}</td><td>${r.passport_country ?? ""} ${r.passport_no ?? ""}</td><td>${r.checked_in_at.slice(0, 16).replace("T", " ")}</td><td>${r.consent_rules_at ? "✓" : "—"}</td></tr>`,
+    <div class="scroll"><table class="t"><thead><tr><th>宿泊日</th><th>宿</th><th>氏名</th><th>住所</th><th>職業</th><th>国籍</th><th>旅券番号</th><th>チェックイン</th><th>同意</th><th></th></tr></thead><tbody>${register.map(
+      (r) => html`<tr><td>${formatJaShort(r.date)}</td><td>${r.house_label}</td><td>${r.name}</td><td>${r.address ?? ""}</td><td>${r.occupation ?? ""}</td><td>${r.nationality ?? ""}</td><td>${r.passport_country ?? ""} ${r.passport_no ?? ""}</td><td>${r.checked_in_at.slice(0, 16).replace("T", " ")}</td><td>${r.consent_rules_at ? "✓" : "—"}</td><td>${r.date >= todayJst() ? html`<form method="post" action="/op/${operator.id}/booking/${r.booking_id}/reset" onsubmit="return confirm('${r.name} のチェックインを取り消して、予約だけの状態に戻します。名簿・支払い・紙の記録も消えます。よいですか？')"><button class="btn sm line" type="submit">チェックイン前に戻す</button></form>` : ""}</td></tr>`,
     )}</tbody></table></div>
+    <div class="mute">「チェックイン前に戻す」は、今日以降の宿泊で間違えたときの取り消し（旅券の登録はそのまま）。過去の名簿は消せません。</div>
   </section>
 
   <section id="print" class="card">
@@ -188,6 +189,17 @@ op.post("/op/:operatorId/schedule", async (c) => {
   for (const s of staff) for (const d of datesOfMonth(month)) await db.setAvailable(s.id, d, on.has(`${s.id}|${d}`));
   await recomputeDuties(db, operatorId, month);
   return c.redirect(`/op/${operatorId}?month=${month}#schedule`);
+});
+
+// チェックインの取り消し（今日以降のみ）：名簿・支払い・紙の記録を消し、予約だけの状態に戻す。旅券の登録は残す
+op.post("/op/:operatorId/booking/:bookingId/reset", async (c) => {
+  const db = new Db(c.env.DB);
+  const b = await db.booking(c.req.param("bookingId"));
+  const house = b ? await db.house(b.house_id) : null;
+  if (b && house && house.operator_id === c.req.param("operatorId") && b.date >= todayJst()) {
+    await db.resetCheckin(b.id, b.guest_id);
+  }
+  return c.redirect(`/op/${c.req.param("operatorId")}?month=${b?.date.slice(0, 7) ?? ""}#register`);
 });
 
 op.post("/op/:operatorId/print/qr", async (c) => {

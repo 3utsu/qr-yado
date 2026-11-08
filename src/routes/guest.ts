@@ -16,8 +16,12 @@ import { nowJstIso } from "../lib/dates";
 
 const guest = new Hono<AppEnv>();
 
+// 言語：?lang= で選んだらクッキーに残す（QR を読み直しても、選んだ言語のまま進めるように）
 function langOf(c: { req: { query: (k: string) => string | undefined; header: (k: string) => string | undefined } }): Lang {
-  return pickLang(c.req.query("lang"), getCookie(c as never, "lang"), c.req.header("accept-language"));
+  const q = c.req.query("lang");
+  const lang = pickLang(q, getCookie(c as never, "lang"), c.req.header("accept-language"));
+  if (q && q === lang) setCookie(c as never, "lang", lang, { path: "/", maxAge: 60 * 60 * 24 * 90 });
+  return lang;
 }
 
 function langBar(current: Lang, path: string): Html {

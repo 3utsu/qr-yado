@@ -144,6 +144,16 @@ export class Db {
       .bind(g.id, g.name, g.language, g.nationality ?? null, g.start_temple ?? null, g.direction ?? null, g.start_date ?? null, g.registered ?? 0)
       .run();
   }
+  // チェックインの取り消し（撮り直し・間違い）：名簿・支払い・紙の記録を消して予約だけに戻す
+  async resetCheckin(bookingId: string, guestId: string) {
+    await this.d1.batch([
+      this.d1.prepare("DELETE FROM payments WHERE booking_id=?").bind(bookingId),
+      this.d1.prepare("DELETE FROM register_entries WHERE booking_id=?").bind(bookingId),
+      this.d1.prepare("DELETE FROM print_jobs WHERE kind='checkin' AND ref_id=?").bind(bookingId),
+      this.d1.prepare("UPDATE bookings SET status='booked' WHERE id=?").bind(bookingId),
+      this.d1.prepare("UPDATE guests SET note=NULL, note_ja=NULL WHERE id=?").bind(guestId),
+    ]);
+  }
   async bookingOfGuestOn(guestId: string, date: string): Promise<Booking | null> {
     return (await this.d1.prepare("SELECT * FROM bookings WHERE guest_id=? AND date=? AND status!='cancelled'").bind(guestId, date).first<Booking>()) ?? null;
   }
