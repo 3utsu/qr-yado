@@ -144,4 +144,5 @@ export const ja: Partial<Dict> = {
   "checkin.use_on_file": "登録済みの旅券で進む →",
   "checkin.read_again": "別の旅券を読み取る…",
   "checkin.on_file_confirm": "この旅で読み取った旅券の内容です。変わったところがあれば直してください。",
+  "book.tonight_guests": "今夜のチェックインの方は、自分の名前を押してください",
 };

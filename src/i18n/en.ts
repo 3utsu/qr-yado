@@ -144,4 +144,5 @@ export const en: Record<string, string> = {
   "checkin.use_on_file": "Use my passport on file →",
   "checkin.read_again": "Read a different passport…",
   "checkin.on_file_confirm": "Taken from your passport read earlier on this road. Correct anything that changed.",
+  "book.tonight_guests": "Checking in tonight? Tap your name",
 };

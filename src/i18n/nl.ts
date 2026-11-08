@@ -139,4 +139,5 @@ export const nl: Partial<Dict> = {
   "checkin.use_on_file": "Doorgaan met bekend paspoort →",
   "checkin.read_again": "Een ander paspoort lezen…",
   "checkin.on_file_confirm": "Overgenomen van je eerder op deze route gelezen paspoort. Corrigeer wat veranderd is.",
+  "book.tonight_guests": "Vannacht inchecken? Tik op je naam",
 };

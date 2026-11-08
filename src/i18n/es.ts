@@ -139,4 +139,5 @@ export const es: Partial<Dict> = {
   "checkin.use_on_file": "Seguir con el pasaporte registrado →",
   "checkin.read_again": "Leer otro pasaporte…",
   "checkin.on_file_confirm": "Tomado de tu pasaporte leído antes en este camino. Corrige lo que haya cambiado.",
+  "book.tonight_guests": "¿Llegas esta noche? Toca tu nombre",
 };

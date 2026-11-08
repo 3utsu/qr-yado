@@ -52,6 +52,10 @@ guest.get("/h/:houseId", async (c) => {
   const all = meGuest ? await db.bookingsOfGuest(meGuest.id) : [];
   const mine = all.filter((b) => b.house_id === house.id && b.date >= from);
   const tonight = mine.find((b) => b.date === from);
+  // 着いて QR を読んだ人（今夜の予約あり）は、そのままチェックインへ（D-30）
+  if (tonight && tonight.status === "booked") return c.redirect(`/b/${tonight.id}/checkin?lang=${lang}`);
+  // カードを持たない端末で読んだとき：今夜の予約者の名前を出し、自分の名前からチェックインへ（名前だけ。旅券番号は出さない）
+  const tonightGuests = meGuest ? [] : (await db.bookingsOfHouseNight(house.id, from)).filter((b) => b.status === "booked");
   // カードを持つ人：2泊目からは前々日の正午から（D-13）。カードなしの人は最初の夜なので60日先まで
   const windowOf = (date: string) => bookingWindow(date, meGuest ? (meGuest.start_date ? date === meGuest.start_date && !all.some((b) => b.date < date) : all.length === 0) : true, nowJstIso().slice(0, 16));
   const body = html`
@@ -65,7 +69,9 @@ ${topbar(t("app.tagline"))}
         <div style="flex:1 1 auto;min-width:0"><div style="font-weight:700">${t("me.hello", { name: meGuest.name })}</div><div style="font-size:12px;${tonight ? "color:#D9D2C4" : "color:#6B6257"}">${tonight ? (tonight.status === "booked" ? t("me.arrived") : tonight.status === "paid" ? t("me.paid") : t("me.checked")) : mine[0] ? `${t("me.booked")} ${mine[0].date}` : t("me.book_as", { name: meGuest.name })}</div></div>
         ${tonight ? (tonight.status === "booked" ? html`<a class="btn sm" href="/b/${tonight.id}/checkin?lang=${lang}" style="background:#C8401E;white-space:nowrap">${t("me.checkin_now")}</a>` : html`<a class="btn sm line" href="/b/${tonight.id}/pay?lang=${lang}" style="color:#F7F4EC;border-color:#F7F4EC">→</a>`) : html`<a class="btn sm line" href="/me/${meGuest.id}?lang=${lang}">${t("me.card")}</a>`}
       </div>`
-    : html`<div class="mute" style="font-size:13px"><a href="/me/new?lang=${lang}&back=/h/${house.id}">${t("me.get_card_link")}</a></div>`}
+    : html`${tonightGuests.length
+        ? html`<div class="card" style="gap:8px"><div style="font-weight:700">${t("book.tonight_guests")}</div><div class="row" style="gap:8px;flex-wrap:wrap">${tonightGuests.map((b) => html`<a class="btn sm line" href="/b/${b.id}/checkin?lang=${lang}">${b.guest_name}</a>`)}</div></div>`
+        : ""}<div class="mute" style="font-size:13px"><a href="/me/new?lang=${lang}&back=/h/${house.id}">${t("me.get_card_link")}</a></div>`}
   ${err ? html`<div class="notice">${err === "full" ? t("book.not_available") : err === "select" ? t("book.select_night") : err === "already" ? t("me.already") : err === "window" ? t("me.not_open") : t("common.error")}</div>` : ""}
   <form method="post" action="/h/${house.id}/book" style="display:flex;flex-direction:column;gap:14px">
     <input type="hidden" name="lang" value="${lang}">${meGuest ? html`<input type="hidden" name="guest_id" value="${meGuest.id}">` : ""}
@@ -167,6 +173,7 @@ guest.get("/b/:bookingId/checkin", async (c) => {
   if (!booking) return c.notFound();
   if (booking.status !== "booked") return c.redirect(`/b/${booking.id}/pay?lang=${lang}`);
   const g = (await db.guest(booking.guest_id))!;
+  setCookie(c, "qr_me", g.id, { path: "/", httpOnly: true, secure: true, sameSite: "Lax", maxAge: 60 * 60 * 24 * 180 }); // この端末をその人のカードにする
   // 旅券が登録済み（この旅で前の宿が読み取った）なら、撮り直さずに確認へ進める。名簿は夜ごとに作る（D-09）
   const onFile = !!(g.passport_no && g.passport_image_key);
   const body = html`

@@ -139,4 +139,5 @@ export const de: Partial<Dict> = {
   "checkin.use_on_file": "Mit hinterlegtem Pass weiter →",
   "checkin.read_again": "Einen anderen Pass lesen…",
   "checkin.on_file_confirm": "Aus deinem früher auf diesem Weg gelesenen Pass. Korrigiere, was sich geändert hat.",
+  "book.tonight_guests": "Heute Nacht einchecken? Tippe auf deinen Namen",
 };
