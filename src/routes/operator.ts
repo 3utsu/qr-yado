@@ -102,7 +102,7 @@ ${topbar(`事業主の画面 · ${operator.name}`, html`<div class="sub">操作�
     ${upcoming.length === 0 ? html`<div class="mute">予約はありません。</div>` : html`<table class="t"><thead><tr><th>夜</th><th>宿</th><th>宿泊者</th><th>読み</th><th>国</th><th>状態</th></tr></thead><tbody>${upcoming.map(
       (b) => html`<tr><td>${formatJaShort(b.date)}</td><td>${b.house_label}</td><td>${b.guest_name}</td><td>${b.name_kana ?? ""}</td><td>${countryJa(b.nationality)}</td><td>${b.status === "paid" ? html`<span class="pill green">支払い済み</span>` : b.status === "checked_in" ? html`<span class="pill amber">チェックイン済み</span>` : html`<span class="pill gray">予約</span>`}</td></tr>`,
     )}</tbody></table>`}
-    <div class="row" style="gap:8px"><span class="mute">宿泊者用の入口（QR の先）：</span>${houses.map((h) => html`<a href="/h/${h.id}">${h.label}</a><form method="post" action="/op/${operator.id}/print/qr"><input type="hidden" name="house_id" value="${h.id}"><button class="btn sm line" type="submit">玄関のQRを印刷</button></form>`)}<a class="mute" href="/me/new">利用者の登録 →</a></div>
+    <div class="row" style="gap:8px"><span class="mute">宿泊者用の入口（QR の先）：</span>${houses.map((h) => html`<a href="/h/${h.id}">${h.label}</a><form method="post" action="/op/${operator.id}/print/qr" class="row" style="gap:4px"><input type="hidden" name="house_id" value="${h.id}"><select name="lang" style="font:inherit;font-size:13px;padding:4px;border:1px solid #E3DDCF;border-radius:8px"><option value="">読む人のスマホの言語で</option>${LANGS.map((l) => html`<option value="${l.code}">${l.label} で開く</option>`)}</select><button class="btn sm line" type="submit">玄関のQRを印刷</button></form>`)}<a class="mute" href="/me/new">利用者の登録 →</a></div>
   </section>
 
   <section id="ledger" class="card">
@@ -206,7 +206,8 @@ op.post("/op/:operatorId/print/qr", async (c) => {
   const db = new Db(c.env.DB);
   const f = await c.req.parseBody();
   const house = await db.house(String(f.house_id ?? ""));
-  if (house && house.operator_id === c.req.param("operatorId")) await enqueueQrPrint(db, house.id);
+  const lang = String(f.lang ?? "");
+  if (house && house.operator_id === c.req.param("operatorId")) await enqueueQrPrint(db, house.id, /^[a-z]{2}$/.test(lang) ? lang : undefined);
   return c.redirect(`/op/${c.req.param("operatorId")}#print`);
 });
 

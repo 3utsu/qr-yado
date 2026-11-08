@@ -186,11 +186,13 @@ ${payroll.lines.map((l) => html`<tr><td>${l.staff.name}</td><td class="r">${l.da
 }
 
 // --- 玄関に貼る QR（A4 1枚。宿主はこれを貼るだけ：D-01） ---
-async function qrSheet(db: Db, houseId: string, origin: string): Promise<Html | null> {
+// ref は "houseId" か "houseId|lang"。lang があると、その言語で開く QR（スマホの言語設定に関係なく）
+async function qrSheet(db: Db, ref: string, origin: string): Promise<Html | null> {
+  const [houseId, lang] = ref.split("|");
   const house = await db.house(houseId);
   if (!house) return null;
   const operator = await db.operator(house.operator_id);
-  const url = houseUrl(origin, house.id);
+  const url = houseUrl(origin, house.id) + (lang && /^[a-z]{2}$/.test(lang) ? `?lang=${lang}` : "");
   const lines = [
     ["English", "Scan to book a bed or to check in"],
     ["Français", "Scannez pour réserver ou vous enregistrer"],
@@ -237,7 +239,9 @@ export async function renderJob(db: Db, job: { kind: string; ref_id: string | nu
 print.get("/h/:houseId/qr.svg", async (c) => {
   const house = await new Db(c.env.DB).house(c.req.param("houseId")!);
   if (!house) return c.notFound();
-  return new Response(qrSvg(houseUrl(new URL(c.req.url).origin, house.id)), { headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" } });
+  const lang = c.req.query("lang");
+  const url = houseUrl(new URL(c.req.url).origin, house.id) + (lang && /^[a-z]{2}$/.test(lang) ? `?lang=${lang}` : "");
+  return new Response(qrSvg(url), { headers: { "content-type": "image/svg+xml", "cache-control": "public, max-age=86400" } });
 });
 
 // 紙の HTML（合言葉が要る）

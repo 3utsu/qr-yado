@@ -143,14 +143,15 @@ export async function translateGuidesForHouse(env: Bindings, db: Db, house: Hous
 }
 
 // 玄関に貼る QR の紙（宿ごとに1枚。もう一度押せば再印刷）
-export async function enqueueQrPrint(db: Db, houseId: string): Promise<string> {
-  const existing = await db.printJobByRef("qr", houseId);
+export async function enqueueQrPrint(db: Db, houseId: string, lang?: string): Promise<string> {
+  const ref = lang ? `${houseId}|${lang}` : houseId; // lang つきは、その言語で開く QR（デモや、特定の国の団体向け）
+  const existing = await db.printJobByRef("qr", ref);
   if (existing) {
     await db.setPrintStatus(existing.id, "queued", null);
     return existing.id;
   }
   const id = newId("pj");
-  await db.enqueuePrint({ id, house_id: houseId, kind: "qr", ref_id: houseId, print_no: null });
+  await db.enqueuePrint({ id, house_id: houseId, kind: "qr", ref_id: ref, print_no: null });
   return id;
 }
 
