@@ -43,17 +43,24 @@ admin.post("/admin/seed", async (c) => {
   const d1 = c.env.DB;
   const db = new Db(d1);
   const mode = c.req.query("mode") ?? "demo"; // demo: 架空データと3か月分 / reset: 全部消す
+  // 入れ直しても消したくないもの：事業主ごとの freee の設定（勘定科目）と、宿の案内の翻訳キャッシュ（Claude を呼び直さない）
+  const keepFreee = new Map<string, string>();
+  for (const r of (await d1.prepare("SELECT id, freee_config FROM operators WHERE freee_config IS NOT NULL").all<{ id: string; freee_config: string }>()).results) keepFreee.set(r.id, r.freee_config);
+  const keepGuides = (await d1.prepare("SELECT house_id, lang, text FROM house_guides").all<{ house_id: string; lang: string; text: string }>()).results;
   const tables = ["payments", "register_entries", "print_jobs", "duties", "bookings", "guests", "staff_schedule", "staff", "house_guides", "houses", "operators"];
   for (const t of tables) await d1.prepare(`DELETE FROM ${t}`).run();
   if (mode === "reset") return c.json({ ok: true, reset: true });
 
-  for (const o of demo.operators) await d1.prepare("INSERT INTO operators (id, name, kind) VALUES (?,?,?)").bind(o.id, o.name, o.kind).run();
+  for (const o of demo.operators) await d1.prepare("INSERT INTO operators (id, name, kind, freee_config) VALUES (?,?,?,?)").bind(o.id, o.name, o.kind, keepFreee.get(o.id) ?? null).run();
   for (const h of demo.houses)
     await d1
       .prepare("INSERT INTO houses (id, operator_id, municipality_code, community, seq, label, lat, lng, section_id, capacity, price, donation, status, guide_ja, rules_ja) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,'open',?,?)")
       .bind(h.id, h.operator_id, h.municipality_code, h.community, h.seq, h.label, h.lat, h.lng, h.section_id, h.capacity, h.price, h.donation, GUIDE_JA, RULES_JA)
       .run();
   for (const s of demo.staff) await d1.prepare("INSERT INTO staff (id, operator_id, name, daily_wage) VALUES (?,?,?,?)").bind(s.id, s.operator_id, s.name, s.daily_wage).run();
+  // 案内の文面が seed と同じ宿は、翻訳キャッシュを戻す（文面が同じなら訳も同じ）
+  const houseIds = new Set(demo.houses.map((h) => h.id));
+  for (const g of keepGuides) if (houseIds.has(g.house_id)) await d1.prepare("INSERT OR IGNORE INTO house_guides (house_id, lang, text) VALUES (?,?,?)").bind(g.house_id, g.lang, g.text).run();
 
   // 要員の予定：8月〜翌1月。各要員は週に3〜4日○（決定的）。Kaizuka #1 の11月・12月は毎日誰かが○になるようにする
   const today = todayJst();
